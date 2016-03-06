@@ -12,7 +12,7 @@
 
 
 void DieWithError(char *errorMessage);  /* External error handling function */
-int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct ClientMessage echoString);
+int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct ClientMessage echoStruct);
 
 
 int main(int argc, char *argv[])
@@ -23,11 +23,17 @@ int main(int argc, char *argv[])
     unsigned short echoServPort;     /* Echo server port */
     unsigned int fromSize;           /* In-out of address size for recvfrom() */
     char *servIP;                    /* IP address of server */
-    struct ClientMessage echoString; /* String to send to echo server */
-	char *requestString; 			 /* Enum String for output echoString.request type*/
+    struct ClientMessage echoStruct; /* String to send to echo server */
+	struct ServerMessage serstructecho;/*Recieved struct from server side*/
+	char *requestString; 			 /* Enum String for output echoStruct.requesttype*/
+	char *respTypeString;
+	char *ClientRqtype;				 /* Request type specified by the user Q/B/R */
     char echoBuffer[ECHOMAX+1];      /* Buffer for receiving echoed string */
-    int echoStringLen;               /* Length of string to echo */
+    int echoStructLen;               /* Length of string to echo */
     int respStringLen;               /* Length of received response */
+	int recvMsgSize;
+	char inputkey;
+	char inputISBN[13];
     
     if ((argc < 2) || (argc > 3))    /* Test for correct number of arguments */
     {
@@ -37,12 +43,45 @@ int main(int argc, char *argv[])
     
     servIP = argv[1];           /* First arg: server IP address (dotted quad) */
     echoServPort = atoi(argv[2]);  /* Use given port, if any */
+	printf(" Welcome to the book repository. \n");
+	printf("-----------------------------------------------------\n");
+	printf(" Enter (Q) to Query a book. \n");
+	printf(" Enter (B) to Borrow a book. \n");
+	printf(" Enter (R) to Return a book. \n");
+	printf(" Enter (X) to Exit. \n");
+	printf("-----------------------------------------------------\n");
+	inputkey = toupper(getc(stdin));
 	
-    echoString.requestID = 999;       /* Second arg: string to echo */
-	echoString.requestType = Borrow;
-	strcpy(echoString.isbn,"1234567891234");
+	printf("input is: %c \n",inputkey);
+	
+	printf(" Please enter an ISBN for the corresponding book you wish to check \n");
+	printf("-----------------------------------------------------\n");
+	printf("-----------------------------------------------------\n");
+	scanf("%20s",inputISBN);
+	printf("%s",inputISBN);
+	
+	
+	switch( inputkey ) 
+		{
+			case 'Q':
+				echoStruct.requestType = 0;
+				break;
+			case 'B':
+				echoStruct.requestType = 1;
+				break;
+			case 'R':
+				echoStruct.requestType = 2;
+				break;
+			default :
+				echoStruct.requestType = 0;
+				break;
+		}
+		
+    echoStruct.requestID = 1;       /* Second arg: string to echo */
+	
+	strcpy(echoStruct.isbn,inputISBN);
     
-    if ((echoStringLen = sizeof(echoString)) > ECHOMAX)  /* Check input length */
+    if ((echoStructLen = sizeof(echoStruct)) > ECHOMAX)  /* Check input length */
         DieWithError("Echo word too long");
 		
 		printf(" Checking echo string \n");
@@ -53,16 +92,20 @@ int main(int argc, char *argv[])
     if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
         DieWithError("socket() failed");
 	
-	printf(" about to echo string %s \n",echoString.isbn);
+	printf(" about to echo string %s \n",echoStruct.isbn);
+	printf(" about to echo rectype %d \n",echoStruct.requestType);
 	
-    sendBook(servIP,echoServPort,sock,echoString);
+    sendBook(servIP,echoServPort,sock,echoStruct);
     
+	respStringLen = sizeof(serstructecho);
+	
     /* Recv a response */
     fromSize = sizeof(fromAddr);
-    if ((respStringLen = recvfrom(sock, (char*) &echoString, echoStringLen, 0,
-         (struct sockaddr *) &fromAddr, &fromSize)) != echoStringLen)
+    if ((respStringLen = recvfrom(sock, (char*) &serstructecho, respStringLen, 0,
+         (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
         DieWithError("recvfrom() failed");
-		switch( echoString.requestType ) 
+		
+		switch( echoStruct.requestType ) 
 		{
 			case 0:
 				requestString="Query";
@@ -77,10 +120,36 @@ int main(int argc, char *argv[])
 				requestString="fail";
 				break;
 		}
+		switch( serstructecho.respType ) 
+		{
+			case 0:
+				respTypeString="Okay";
+				break;
+			case 1:
+				respTypeString="ISBNError";
+				break;
+			case 2:
+				respTypeString="AllGone";
+				break;
+			case 3:
+				respTypeString="NoInventory";
+				break;
+			default :
+				respTypeString="NoInventory";
+				break;
+		}
 		
-		printf(" Request ID:%d \n",echoString.requestID);
-		printf(" Request Type %s \n",requestString);
-		printf(" ISBN: %s \n",echoString.isbn);
+		
+		printf(" Request ID :%d \n",serstructecho.requestID);
+		printf(" RespType ID :%s \n",respTypeString);
+		printf(" ISBN : %s \n",serstructecho.isbn);
+		printf(" Authors :%s \n",serstructecho.authors);
+		printf(" Title :%s \n",serstructecho.title);
+		printf(" Edition: %d \n",serstructecho.edition);
+		printf(" Year :%d \n",serstructecho.year);
+		printf(" Publisher :%s \n",serstructecho.publisher);
+		printf(" Inventory :%d \n",serstructecho.inventory);
+		printf(" Available :%d \n",serstructecho.available);
 		
     
     /*if (echoServAddr.sin_addr.s_addr != fromAddr.sin_addr.s_addr)
@@ -100,27 +169,34 @@ int main(int argc, char *argv[])
 
 
 
- int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct ClientMessage echoString)
+ int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct ClientMessage echoStruct)
 {
-	size_t echoStringLen2 = sizeof(echoString);
+	size_t echoStringLen2 = sizeof(echoStruct);
 	    /* Construct the server address structure */
 	struct sockaddr_in echoServAddr; /* Echo server address */
 	
     memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
     echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
     echoServAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
-    echoServAddr.sin_port   = htons(echoServPort);     /* Server port */
+    echoServAddr.sin_port = htons(echoServPort);     /* Server port */
 	
-	printf(" Checking echo string %d \n",echoString.requestID);
+	printf(" Checking echo string %d \n",echoStruct.requestID);
     
     /* Send the string to the server */
-    if (sendto(sock, (char*) &echoString, echoStringLen2, 0, (struct sockaddr *)
+    if (sendto(sock, (char*) &echoStruct, echoStringLen2, 0, (struct sockaddr *)
                &echoServAddr, sizeof(echoServAddr)) != echoStringLen2)
         DieWithError("sendto() sent a different number of bytes than expected");
 		
-	printf(" Sending string %d \n",echoString.requestType);
+	//printf(" Sending string %d \n",echoStruct.requestType);
 }
 
+
+int isbnCheck(char isbn[13])
+{
+	//returns 1 if valid and 0 if invalid
+	
+	return(0);
+}
 
  /* Construct the server address structure 
     memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure 

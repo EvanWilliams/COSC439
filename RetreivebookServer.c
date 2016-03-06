@@ -10,6 +10,7 @@
 
 void DieWithError(char *errorMessage);  /* External error handling function */
 int loadbooks(struct ServerMessage *name);
+int findbooks(struct ServerMessage *name, char isbn[13],int numBooks);
 
 int main(int argc, char *argv[])
 {
@@ -17,13 +18,15 @@ int main(int argc, char *argv[])
     struct sockaddr_in echoServAddr; /* Local address */
     struct sockaddr_in echoClntAddr; /* Client address */
     unsigned int cliAddrLen;         /* Length of incoming message */
-    struct ClientMessage echoString;    /* Buffer for echo string */
-	struct ServerMessage books[6];
+    struct ServerMessage serstructecho;    /* Buffer for echo string */
+	struct ServerMessage books[20];
+	
 	int numBooks = 0;
 	char echoBuffer[ECHOMAX];        /* Buffer for echo string */
 	struct ClientMessage echoStruct;
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
+	int sendMsgSize;
     
 	printf(" starting server version 1\n");
 	
@@ -53,12 +56,14 @@ int main(int argc, char *argv[])
     
 	printf(" About to run forever \n");
 	numBooks = loadbooks(books);
+	
+	
     for (;;) /* Run forever */
     {
         /* Set the size of the in-out parameter */
         cliAddrLen = sizeof(echoClntAddr);
         
-		printf(" About to recieve mesg \n");
+		printf(" About to receieve mesg \n");
 		
         /* Block until receive message from a client */
         if ((recvMsgSize = recvfrom(sock, (char*) &echoStruct, ECHOMAX, 0,
@@ -66,21 +71,42 @@ int main(int argc, char *argv[])
             DieWithError("recvfrom() failed");
         
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
-        
-		printf(" Sending string %s \n",echoStruct.isbn);
+		
+		if(findbooks(books,echoStruct.isbn,numBooks)!=-1){
+			serstructecho = books[findbooks(books,echoStruct.isbn,numBooks)];
+			serstructecho.respType = 0;
+		}
+		printf("%s\n",serstructecho.authors);
+		sendMsgSize = sizeof(serstructecho);
 		
         /* Send received datagram back to the client */
         /* Send received datagram back to the client */
-        if (sendto(sock, (char*) &echoStruct, recvMsgSize, 0,
-                   (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
+        if (sendto(sock, (char*) &serstructecho, sendMsgSize, 0,
+                   (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sendMsgSize)
             DieWithError("sendto() sent a different number of bytes than expected");
 		
-		printf(" Sending string %s \n",echoString);
+		printf(" Sending string %s \n",serstructecho.authors);
     }
     /* NOT REACHED */
 }
 
-int loadbooks(struct ServerMessage *name)
+int findbooks(struct ServerMessage *books,char isbn[13],int numBooks)
+{
+	int i;
+	//returns an index of the book if found if it is not found return -1
+	for(i = 0; i<numBooks; i++)
+	{
+		if (memcmp(isbn, books[i].isbn, 13)== 0)
+		{
+			return (i);
+		}
+		
+	}
+	
+return (-1);
+}
+
+int loadbooks(struct ServerMessage *books)
 {
 	
 	FILE * fp;
@@ -99,8 +125,8 @@ int loadbooks(struct ServerMessage *name)
    printf("eof status: %d \n",feof(fp));
    
    while(feof(fp) ==0){
-   fscanf(fp, "%13c %s %s %d %d %s %d %d \n", isbn, authors, title, &edition,&year,publisher,&inventory,&available);
-   printf("%13c %s %s %d %d %s %d %d\n", isbn, authors, title, edition,year,publisher,inventory,available);
+   fscanf(fp, "%13c %s %s %d %d %s %d %d \n", books[numBooks].isbn, books[numBooks].authors, books[numBooks].title, &books[numBooks].edition,&books[numBooks].year,books[numBooks].publisher,&books[numBooks].inventory,&books[numBooks].available);
+   printf("%s %s %s %d %d %s %d %d\n", books[numBooks].isbn, books[numBooks].authors, books[numBooks].title, books[numBooks].edition,books[numBooks].year,books[numBooks].publisher,books[numBooks].inventory,books[numBooks].available);
    numBooks++;
    }
    return (numBooks);
