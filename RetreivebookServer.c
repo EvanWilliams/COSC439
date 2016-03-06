@@ -71,10 +71,32 @@ int main(int argc, char *argv[])
             DieWithError("recvfrom() failed");
         
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
-		
+		/*This checks if the book corresponding to the ISBN is in the database*/
 		if(findbooks(books,echoStruct.isbn,numBooks)!=-1){
 			serstructecho = books[findbooks(books,echoStruct.isbn,numBooks)];
+			/*if the book is available then set the respType to 0 meaning "Okay"*/
 			serstructecho.respType = 0;
+			
+		if(echoStruct.requestType == 1)
+		{
+			if(serstructecho.available>0)
+			{
+				serstructecho.available--;
+				serstructecho.respType = 0;
+			}
+			else{
+				serstructecho.respType = 2;
+			}
+		}
+		else if(echoStruct.requestType == 2)
+		{
+			serstructecho.available++;
+			serstructecho.respType = 0;
+		}
+		
+		}
+		else{
+			serstructecho.respType = 1;
 		}
 		printf("%s\n",serstructecho.authors);
 		sendMsgSize = sizeof(serstructecho);
