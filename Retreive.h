@@ -7,19 +7,18 @@
 
 //struct sendBook(sockaddr_in echoServAddr,char servIP,unsigned short echoServPort, int sock, ClientMessage echoString){}
 
-typedef struct {
-unsigned int requestID;                                                 /* unique client identifier */
-enum {Okay, ISBNError, AllGone, NoInventory} respType;   /* same size as an unsigned int */
-char isbn[13];                                                              /* book ISBN-13*/
-char authors[100];                                                      /* book author(s) */
-char title[100];                                                             /* book title */
-unsigned int edition;                                                    /* book edition */
-unsigned int year;                                                        /* book publication year */
-char publisher[100];                                                    /* book author(s) */
-unsigned int inventory;                                                /* inventory count */
-unsigned int available;                                                 /* number of available books */
-
-} ServerMessage;
+ struct ServerMessage{
+	unsigned int requestID;                                 /* unique client identifier */
+	enum {Okay, ISBNError, AllGone, NoInventory} respType;  /* same size as an unsigned int */
+	char isbn[13];                                          /* book ISBN-13*/
+	char authors[100];										/* book author(s) */
+	char title[100];										/* book title */
+	unsigned int edition;									/* book edition */
+	unsigned int year;										/* book publication year */
+	char publisher[100]; 									/* book author(s) */
+	unsigned int inventory;									/* inventory count */
+	unsigned int available;									/* number of available books */
+};
 
 enum rectype{Query, Borrow, Return};
 struct ClientMessage{
