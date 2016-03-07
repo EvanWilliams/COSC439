@@ -13,6 +13,7 @@
 
 void DieWithError(char *errorMessage);  /* External error handling function */
 int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct ClientMessage echoStruct);
+int IsValidIsbn13(char *isbn);
 
 
 int main(int argc, char *argv[])
@@ -34,7 +35,7 @@ int main(int argc, char *argv[])
 	int recvMsgSize;
 	char inputkey;
 	int Exitflag = 0;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
-	int Validflag = 0;				 /*Validation for the operations to make sure it is B/Q/R/X */
+	int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/X */
 	char inputISBN[13];
     
     if ((argc < 2) || (argc > 3))    /* Test for correct number of arguments */
@@ -47,7 +48,7 @@ int main(int argc, char *argv[])
     echoServPort = atoi(argv[2]);  /* Use given port, if any */
 	
 	for(;;){
-		if(Validflag == 0){
+		if(Validflag == 1){
 			printf(" Welcome to the book repository. \n");
 			printf("-----------------------------------------------------\n");
 			printf(" Enter (Q) to Query a book. \n");
@@ -87,13 +88,13 @@ int main(int argc, char *argv[])
 					break;
 			}
 		if(Validflag == 1){
-		
+		do{
 		printf(" Please enter an ISBN for the corresponding book you wish to %s \n",requestString);
 		printf("-----------------------------------------------------\n");
 		printf("-----------------------------------------------------\n");
 		scanf("%20s",inputISBN);
 		printf("%s",inputISBN);
-		
+		}while(IsValidIsbn13(inputISBN) == 0);
 		if(Exitflag == 1)
 			break;
 			
@@ -208,6 +209,37 @@ int isbnCheck(char isbn[13])
 	
 	return(0);
 }
+
+
+// Validate isbn return 1 if valid and 0 if invalid
+int IsValidIsbn13(char *isbn)
+    {
+        int result = 0;
+        
+
+		// Comment Source: Wikipedia
+		// The calculation of an ISBN-13 check digit begins with the first
+		// 12 digits of the thirteen-digit ISBN (thus excluding the check digit itself).
+		// Each digit, from left to right, is alternately multiplied by 1 or 3,
+		// then those products are summed modulo 10 to give a value ranging from 0 to 9.
+		// Subtracted from 10, that leaves a result from 1 to 10. A zero (0) replaces a
+		// ten (10), so, in all cases, a single check digit results.
+		int sum = 0;
+		int i = 0;
+		for (i = 0; i < 12; i++)
+		{
+			sum += (isbn[i]-'0') * (i % 2 == 1 ? 3 : 1);
+		}
+
+		int remainder = sum % 10;
+		int checkDigit = 10 - remainder;
+		if (checkDigit == 10) checkDigit = 0;
+
+		result = checkDigit == (isbn[12]-'0');
+
+		printf("isbn checkdigit : %d\n",checkDigit);
+        return result;
+    }
 
  /* Construct the server address structure 
     memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure 
