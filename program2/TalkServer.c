@@ -21,10 +21,13 @@ int main(int argc, char *argv[])
     unsigned int cliAddrLen;         /* Length of incoming message */
     struct ServerMessage serstructecho;    /* Buffer for echo string */
 	struct ServerMessage books[20]; //array of books that are read from the text file
+	struct ClientMessage echoStruct; //clientmessage struct
+	
+	struct loginMsg	LoginReq;
+	struct loginMsg	loggedInUser[20];
 	
 	int numBooks = 0;				//count for how many books are in books[20]
 	char echoBuffer[ECHOMAX];        /* Buffer for echo string */
-	struct ClientMessage echoStruct; //clientmessage struct
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
 	int sendMsgSize;				/* Size of sent message */
@@ -59,30 +62,33 @@ int main(int argc, char *argv[])
     
 	printf(" About to run forever \n");
 
-	numBooks = loadbooks(books);
+	//numBooks = loadbooks(books);
 	
 	
-    for (;;) /* Run forever */
+	//this is now Login()
+	for (;;)  //Run forever 
     {
-        /* Set the size of the in-out parameter */
+        // Set the size of the in-out parameter 
         cliAddrLen = sizeof(echoClntAddr);
         
 		if(LoggingOn == 1)
-		printf(" About to receieve mesg \n");
+		printf(" About to receieve LoginMsg \n");
 		
-        /* Block until receive message from a client */
-        if ((recvMsgSize = recvfrom(sock, (char*) &echoStruct, ECHOMAX, 0,
+        //Block until receive message from a client 
+        if ((recvMsgSize = recvfrom(sock, (char*) &LoginReq, ECHOMAX, 0,
                                     (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
             DieWithError("recvfrom() failed");
         
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
+		printf("TCPPort#: %d USerID: %d \n",LoginReq.TCPPort, LoginReq.UserID);
 		
-		/*This checks if the book corresponding to the ISBN is in the database*/
+		
+		/* /*This checks if the book corresponding to the ISBN is in the database
 		if(findbooks(books,echoStruct.isbn,numBooks)!=-1){
 			serstructecho = books[findbooks(books,echoStruct.isbn,numBooks)];
 			serstructecho.requestID = echoStruct.requestID;
 			
-			/*if the book is available then set the respType to 0 meaning "Okay"*/
+			/*if the book is available then set the respType to 0 meaning "Okay"
 			if (IsValidIsbn13(echoStruct.isbn) == 0)
 			{
 				serstructecho.respType = 1;//returns an ISBN error is ISBN is invalid
@@ -119,7 +125,79 @@ int main(int argc, char *argv[])
 		sendMsgSize = sizeof(serstructecho);
 		
         /* Send received datagram back to the client */
-        /* Send received datagram back to the client */
+        /* Send received datagram back to the client 
+        if (sendto(sock, (char*) &serstructecho, sendMsgSize, 0,
+                   (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sendMsgSize)
+            DieWithError("sendto() sent a different number of bytes than expected");
+		
+		if(LoggingOn == 1)//debug logging
+		printf(" Sending string %s \n",serstructecho.authors); */
+    }
+	
+}	
+	
+	
+	//		Login()
+	//		Every time the Server recieves a login request then respond with a Acknowlagement
+	
+   /* for (;;)  Run forever 
+    {
+         Set the size of the in-out parameter 
+        cliAddrLen = sizeof(echoClntAddr);
+        
+		if(LoggingOn == 1)
+		printf(" About to receieve mesg \n");
+		
+        /* Block until receive message from a client 
+        if ((recvMsgSize = recvfrom(sock, (char*) &echoStruct, ECHOMAX, 0,
+                                    (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
+            DieWithError("recvfrom() failed");
+        
+        printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
+		
+		/*This checks if the book corresponding to the ISBN is in the database
+		if(findbooks(books,echoStruct.isbn,numBooks)!=-1){
+			serstructecho = books[findbooks(books,echoStruct.isbn,numBooks)];
+			serstructecho.requestID = echoStruct.requestID;
+			
+			/*if the book is available then set the respType to 0 meaning "Okay"
+			if (IsValidIsbn13(echoStruct.isbn) == 0)
+			{
+				serstructecho.respType = 1;//returns an ISBN error is ISBN is invalid
+			}else{
+				serstructecho.respType = 0;//returns Okay otherwise
+			}
+		if(echoStruct.requestType == 1)//for Borrow requests
+		{
+			if(serstructecho.available>0)//if there is some in stock
+			{
+				serstructecho.available--;
+				serstructecho.respType = 0;//returns Okay
+			}
+			else{
+				serstructecho.respType = 2;//returns AllGone
+			}
+			if(serstructecho.inventory == 0)//if there are none in inventory
+				serstructecho.respType = 3;//returns NoInventory
+		}
+		else if(echoStruct.requestType == 2)//for Return Requests
+		{
+			serstructecho.available++;//increment inventory
+			serstructecho.respType = 0;//returns Okay
+		}
+		
+		}
+		else{
+			serstructecho.respType = 1;//else return ISBN error
+		}
+		
+		if(LoggingOn == 1)//debug logging
+		printf("%s\n",serstructecho.authors);
+	
+		sendMsgSize = sizeof(serstructecho);
+		
+        /* Send received datagram back to the client 
+        /* Send received datagram back to the client 
         if (sendto(sock, (char*) &serstructecho, sendMsgSize, 0,
                    (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sendMsgSize)
             DieWithError("sendto() sent a different number of bytes than expected");
@@ -128,7 +206,7 @@ int main(int argc, char *argv[])
 		printf(" Sending string %s \n",serstructecho.authors);
     }
     /* NOT REACHED */
-}
+
 
 int findbooks(struct ServerMessage *books,char isbn[13],int numBooks)
 {

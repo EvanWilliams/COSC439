@@ -1,10 +1,10 @@
-1234567891234 Randy-DuHicky WhoToSellWigsTo 1900 1856 JimBobFriends 100 99
-1234544441237 suzy-Shlotznik WhoToSellWigsTo 1900 1856 JimBobFriends 100 99
-1234567871233 Clevort-TomSmith WhoToSellWigsTo 1900 1856 JimBobFriends 100 99
-1222222891238 Jim-Shlotznik WhoToSellWigsTo 1900 1856 JimBobFriends 100 99
-1234544891230 Candice-Peeples WhoToSellWigsTo 1900 1856 JimBobFriends 100 99
-1234588888838 Benjamin-CandyGram WhoToSellWigsTo 1900 1856 JimBobFriends 100 99
+9780030640612 Randy-DuHicky WhoToSellWigsTo 1934 1856 JimBobFriends 10 5
+1234544441237 suzy-Shlotznik WhoToBoatsTo 1956 1856 JimBobFriends 13 3
+1234567871233 Clevort-TomSmith WhoToSellForksTo 1974 1856 JimBobFriends 5 2
+1222222891238 Jim-Shlotznik WhoToSellPetsTo 1981 1856 JimBobFriends 1 1
+1234544891230 Candice-Peeples WhoToSellTo-Comprehensive-Edition 1986 1856 JimBobFriends 1 1
+1234588888838 Benjamin-CandyGram WhoToBuyWigsFrom 1994 1856 JimBobFriends 5 4
 9780132126953 Andrew_Tanenbaum-David_Wetherall Computer_Networks 5 2011 Prentice-Hall 5 2
 9780123745408 Michael_Donahoo-Kenneth_Calvert TCP/IP_Sockets_in_C 2 2009 Morgan-Kaufman 3 0
-9780133354690 William_Stallings Cryptography_and_Network_Security 6 2014 Prentice-Hall 3 3
+9780133354690 William_Stallings Cryptography_and_Network_Security 6 2014 Prentice-Hall 0 0
 9780072467505 Yale_Patt-Sanjay_Patel Introduction_to_Computing_Systems_from_bits_&_gates_to_C_&_beyond 2 2004 McGraw-Hill 1 0

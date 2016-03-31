@@ -11,7 +11,11 @@
 
 
 void DieWithError(char *errorMessage);  /* External error handling function */
+
 int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct ClientMessage echoStruct);
+
+int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct loginMsg TCPID);
+
 int IsValidIsbn13(char *isbn);
 
 
@@ -24,6 +28,7 @@ int main(int argc, char *argv[])
     unsigned int fromSize;           /* In-out of address size for recvfrom() */
     char *servIP;                    /* IP address of server */
     struct ClientMessage echoStruct; /* String to send to echo server */
+	struct loginMsg TCPID;			 /* Struct to send the Login Credentials to the server*/
 	struct ServerMessage serstructecho;/*Recieved struct from server side*/
 	char *requestString; 			 /* Enum String for output echoStruct.requesttype*/
 	char *respTypeString;
@@ -33,11 +38,16 @@ int main(int argc, char *argv[])
     int respStringLen;               /* Length of received response */
 	int recvMsgSize;
 	char inputkey;
+	int UserID;
 	int UniquereqID = 0;
 	int Exitflag = 0;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
-	int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/X */
+	int Validflag = 0;				 /*Validation for the operations to make sure it is B/Q/R/X */
 	char inputISBN[13];
-    
+    printf("--------------------4444444--------------------------------------------\n");
+	sendLogin(servIP,echoServPort,sock,TCPID);
+	TCPID.UserID = 327902;                                	 /* unique client identifier */
+	TCPID.idok = 1;  						/* same size as an unsigned int */                             
+	TCPID.TCPPort = 800210;
     if ((argc < 2) || (argc > 3))    /* Test for correct number of arguments */
     {
         fprintf(stderr,"Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n", argv[0]);
@@ -49,15 +59,13 @@ int main(int argc, char *argv[])
 	
 	for(;;){
 		if(Validflag == 1){
-			printf("\n\n Welcome to the book repository. \n");
 			printf("----------------------------------------------------------------\n");
-			printf(" Enter (Q) to Query a book. \n");
-			printf(" Enter (B) to Borrow a book. \n");
-			printf(" Enter (R) to Return a book. \n");
-			printf(" Enter (X) to Exit. \n");
+			printf("\n \n Welcome to the talk session. \n");
+			printf(" First this client will automatically send your TCP Port and UserID to the server \n");
+			printf(" The server will respond with a Success/Failure message \n");
 			printf("----------------------------------------------------------------\n");
 		}
-		while((isalpha(inputkey = (char) toupper(getchar())))==0){
+		 while((isalpha(inputkey = (char) toupper(getchar())))==0){
 			
 			if(LoggingOn == 1)
 			printf("input is: %c \n",inputkey);
@@ -87,7 +95,7 @@ int main(int argc, char *argv[])
 				default :
 					Validflag = 0; 					//this is invalid input
 					break;
-			}
+			} 
 
 		if(Validflag == 1){
 			
@@ -103,7 +111,7 @@ int main(int argc, char *argv[])
 			}while(IsValidIsbn13(inputISBN) == 0);
 			
 			echoStruct.requestID = ++UniquereqID;       /* Second arg: string to echo */
-		
+			
 			if(LoggingOn == 1)
 			printf(" RequestID %d \n",echoStruct.requestID);
 		
@@ -124,7 +132,7 @@ int main(int argc, char *argv[])
 			printf(" about to echo string %s \n",echoStruct.isbn);
 			printf(" about to echo rectype %d \n",echoStruct.requestType);
 			}
-		
+			
 			sendBook(servIP,echoServPort,sock,echoStruct);
 			
 			respStringLen = sizeof(serstructecho);
@@ -206,6 +214,30 @@ int main(int argc, char *argv[])
 		
 	//printf(" Sending string %d \n",echoStruct.requestType);
 }
+
+int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct loginMsg TCPID)
+{
+	size_t loginMsgLen = sizeof(TCPID);
+	    /* Construct the server address structure */
+	struct sockaddr_in echoServAddr; /* Echo server address */
+	
+    memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
+    echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
+    echoServAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
+    echoServAddr.sin_port = htons(echoServPort);     /* Server port */
+	
+	if(LoggingOn == 1)
+	printf(" Checking echo string %i \n",TCPID.TCPPort);
+    
+    /* Send the string to the server */
+    if (sendto(sock, (char*) &TCPID, loginMsgLen, 0, (struct sockaddr *)
+               &echoServAddr, sizeof(echoServAddr)) != loginMsgLen)
+        DieWithError("sendto() sent a different number of bytes than expected");
+		
+	//printf(" Sending string %d \n",echoStruct.requestType);
+}
+
+
 
 // Validate isbn return 1 if valid and 0 if invalid
 int IsValidIsbn13(char *isbn)
