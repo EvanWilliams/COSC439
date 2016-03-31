@@ -41,13 +41,16 @@ int main(int argc, char *argv[])
 	int UserID;
 	int UniquereqID = 0;
 	int Exitflag = 0;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
-	int Validflag = 0;				 /*Validation for the operations to make sure it is B/Q/R/X */
-	char inputISBN[13];
+	int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/X */
+	
     printf("--------------------4444444--------------------------------------------\n");
-	sendLogin(servIP,echoServPort,sock,TCPID);
-	TCPID.UserID = 327902;                                	 /* unique client identifier */
+
+	
+	TCPID.UserID = 3279;                                	 /* unique client identifier */
 	TCPID.idok = 1;  						/* same size as an unsigned int */                             
-	TCPID.TCPPort = 800210;
+	TCPID.TCPPort = 2727;
+	
+	
     if ((argc < 2) || (argc > 3))    /* Test for correct number of arguments */
     {
         fprintf(stderr,"Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n", argv[0]);
@@ -65,63 +68,6 @@ int main(int argc, char *argv[])
 			printf(" The server will respond with a Success/Failure message \n");
 			printf("----------------------------------------------------------------\n");
 		}
-		 while((isalpha(inputkey = (char) toupper(getchar())))==0){
-			
-			if(LoggingOn == 1)
-			printf("input is: %c \n",inputkey);
-		}
-		
-		Validflag = 1;
-		switch( inputkey ) 
-			{
-				case 'Q':
-					echoStruct.requestType = 0;
-					requestString="Query";
-					
-					break;
-				case 'B':
-					echoStruct.requestType = 1;
-					requestString="Borrow";
-					break;
-				case 'R':
-					echoStruct.requestType = 2;
-					requestString="Return";
-					break;
-				case 'X':
-					Exitflag = 1;
-					requestString="fail";
-					exit(0);
-					break;
-				default :
-					Validflag = 0; 					//this is invalid input
-					break;
-			} 
-
-		if(Validflag == 1){
-			
-			do{
-				printf("Please enter an ISBN for the corresponding book you wish to %s \n",requestString);
-				printf("----------------------------------------------------------------\n");
-				printf("----------------------------------------------------------------\n");
-				scanf("%20s",inputISBN);
-				
-				if(LoggingOn == 1)
-				printf("%s",inputISBN);
-			
-			}while(IsValidIsbn13(inputISBN) == 0);
-			
-			echoStruct.requestID = ++UniquereqID;       /* Second arg: string to echo */
-			
-			if(LoggingOn == 1)
-			printf(" RequestID %d \n",echoStruct.requestID);
-		
-			strcpy(echoStruct.isbn,inputISBN);
-		
-			if ((echoStructLen = sizeof(echoStruct)) > ECHOMAX)  /* Check input length */
-				DieWithError("Echo word too long");
-			
-			if(LoggingOn == 1)
-			printf(" port: %d Ip:%s \n",echoServPort,servIP);
 		
 		
 		/* Create a datagram/UDP socket */
@@ -133,7 +79,7 @@ int main(int argc, char *argv[])
 			printf(" about to echo rectype %d \n",echoStruct.requestType);
 			}
 			
-			sendBook(servIP,echoServPort,sock,echoStruct);
+			sendLogin(servIP,echoServPort,sock,TCPID);
 			
 			respStringLen = sizeof(serstructecho);
 		
@@ -144,52 +90,13 @@ int main(int argc, char *argv[])
 					DieWithError("recvfrom() failed");
 
 		//Query Case Returns Book details		
-			switch( serstructecho.respType ) 
-			{
-				case 0:
-					respTypeString="Okay";
-					break;
-				case 1:
-					respTypeString="ISBNError";
-					printf("\nThere was an error handling your ISBN number.\n");
-					break;
-				case 2:
-					respTypeString="AllGone";
-					printf("\nAll copies of that title are checked out.\n");
-					break;
-				case 3:
-					respTypeString="NoInventory";
-					printf("\nThere are no copies of that book at this location.\n");
-					break;
-				default :
-					respTypeString="NoInventory";
-					break;
-			}
 			
-			printf("----------------------------------------------------------------\n");
-			printf("----------------------------------------------------------------\n\n");
-			printf("Requested Book Details\n\n");
-			
-			printf(" Request ID: %d \n",serstructecho.requestID);
-			printf(" RespType ID: %s \n",respTypeString);
-			printf(" ISBN: %13.13s \n",serstructecho.isbn);
-			printf(" Authors: %s \n",serstructecho.authors);
-			printf(" Title: %s \n",serstructecho.title);
-			printf(" Edition: %d \n",serstructecho.edition);
-			printf(" Year: %d \n",serstructecho.year);
-			printf(" Publisher: %s \n",serstructecho.publisher);
-			printf(" Inventory: %d \n",serstructecho.inventory);
-			printf(" Available: %d \n",serstructecho.available);
-			
-		
-		/* null-terminate the received data */
-			echoBuffer[respStringLen] = '\0';
-		
-		}
 	}
 	close(sock);
-    exit(0);
+	exit(0);
 }
+	
+
 
 
 
