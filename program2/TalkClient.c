@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     char *servIP;                    /* IP address of server */
     struct ClientMessage echoStruct; /* String to send to echo server */
 	struct loginMsg TCPID;			 /* Struct to send the Login Credentials to the server*/
-	struct ServerMessage serstructecho;/*Recieved struct from server side*/
+	struct loginMsg serstructecho;	 /*Recieved struct from server side*/
 	char *requestString; 			 /* Enum String for output echoStruct.requesttype*/
 	char *respTypeString;
 	char *ClientRqtype;				 /* Request type specified by the user Q/B/R */
@@ -60,6 +60,11 @@ int main(int argc, char *argv[])
     servIP = argv[1];           /* First arg: server IP address (dotted quad) */
     echoServPort = atoi(argv[2]);  /* Use given port, if any */
 	
+			/* Create a datagram/UDP socket */
+	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+		DieWithError("socket() failed");
+		
+		
 	for(;;){
 		if(Validflag == 1){
 			printf("----------------------------------------------------------------\n");
@@ -70,17 +75,13 @@ int main(int argc, char *argv[])
 		}
 		
 		
-		/* Create a datagram/UDP socket */
-			if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-				DieWithError("socket() failed");
-		
 			if(LoggingOn == 1){
-			printf(" about to echo string %s \n",echoStruct.isbn);
-			printf(" about to echo rectype %d \n",echoStruct.requestType);
+			printf(" about to echo UserID: %d \n",serstructecho.UserID);
+			printf(" about to echo TCPPort: %d \n",serstructecho.TCPPort);
 			}
 			
 			sendLogin(servIP,echoServPort,sock,TCPID);
-			
+			printf(" Test %d \n",echoStruct.requestType);
 			respStringLen = sizeof(serstructecho);
 		
 		/* Recv a response */
@@ -89,6 +90,11 @@ int main(int argc, char *argv[])
 					 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
 					DieWithError("recvfrom() failed");
 
+			printf(" Test %d \n",echoStruct.requestType+1);
+			printf(" about to echo UserID: %d \n",serstructecho.UserID);
+			printf(" about to echo TCPPort: %d \n",serstructecho.TCPPort);
+
+			
 		//Query Case Returns Book details		
 			
 	}
@@ -97,31 +103,7 @@ int main(int argc, char *argv[])
 }
 	
 
-
-
-
- int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct ClientMessage echoStruct)
-{
-	size_t echoStringLen2 = sizeof(echoStruct);
-	    /* Construct the server address structure */
-	struct sockaddr_in echoServAddr; /* Echo server address */
-	
-    memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
-    echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
-    echoServAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
-    echoServAddr.sin_port = htons(echoServPort);     /* Server port */
-	
-	if(LoggingOn == 1)
-	printf(" Checking echo string %d \n",echoStruct.requestID);
-    
-    /* Send the string to the server */
-    if (sendto(sock, (char*) &echoStruct, echoStringLen2, 0, (struct sockaddr *)
-               &echoServAddr, sizeof(echoServAddr)) != echoStringLen2)
-        DieWithError("sendto() sent a different number of bytes than expected");
-		
-	//printf(" Sending string %d \n",echoStruct.requestType);
-}
-
+ 
 int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct loginMsg TCPID)
 {
 	size_t loginMsgLen = sizeof(TCPID);
@@ -144,38 +126,6 @@ int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct l
 	//printf(" Sending string %d \n",echoStruct.requestType);
 }
 
-
-
-// Validate isbn return 1 if valid and 0 if invalid
-int IsValidIsbn13(char *isbn)
-    {
-        int result = 0;
-        
-
-		// Comment Source: Wikipedia
-		// The calculation of an ISBN-13 check digit begins with the first
-		// 12 digits of the thirteen-digit ISBN (thus excluding the check digit itself).
-		// Each digit, from left to right, is alternately multiplied by 1 or 3,
-		// then those products are summed modulo 10 to give a value ranging from 0 to 9.
-		// Subtracted from 10, that leaves a result from 1 to 10. A zero (0) replaces a
-		// ten (10), so, in all cases, a single check digit results.
-		int sum = 0;
-		int i = 0;
-		for (i = 0; i < 12; i++)
-		{
-			sum += (isbn[i]-'0') * (i % 2 == 1 ? 3 : 1);
-		}
-
-		int remainder = sum % 10;
-		int checkDigit = 10 - remainder;
-		if (checkDigit == 10) checkDigit = 0;
-
-		result = checkDigit == (isbn[12]-'0');
-
-		if(LoggingOn == 1)
-		printf("isbn checkdigit : %d\n",checkDigit);
-        return result;
-    }
 
  /* Construct the server address structure 
     memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure 

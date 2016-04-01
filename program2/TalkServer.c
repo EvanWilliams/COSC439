@@ -13,17 +13,75 @@ void DieWithError(char *errorMessage);  /* External error handling function */
 int loadbooks(struct ServerMessage *name);
 int findbooks(struct ServerMessage *name, char isbn[13],int numBooks);
 
+void initClientList(struct loginMsg loggedInUser[])
+{
+	int i;
+	for (i = 0; i < 19; i++){
+		loggedInUser[i].UserID = 0;
+	}
+}	
+	
+int findLastEntry(struct loginMsg loggedInUser[])
+{
+	int i;
+	for (i = 0; i < 19; i++){
+		if( loggedInUser[i].UserID == 0){
+			return(i);
+		}
+		
+	}
+	return(-1);
+}
+
+void printClientList(struct loginMsg loggedInUser[])
+{
+	//prints out the client list if the UserID = Zero then break
+	printf("Printing Client List");	
+	int i;
+	for (i = 0; i < 19; i++){
+		
+	if( loggedInUser[i].UserID == 0)
+		break;
+	printf("Client #:%d Has a UserId:%d and a TCPPort:%d as well as a idok:%d \n ",i,loggedInUser[i].UserID, loggedInUser[i].TCPPort, loggedInUser[i].idok);
+	
+	}
+}	
+int sendLogin(unsigned short echoServPort, int sock, const struct loginMsg TCPID)
+{
+	size_t loginMsgLen = sizeof(TCPID);
+	    /* Construct the server address structure */
+	struct sockaddr_in echoServAddr; /* Echo server address */
+	
+    memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
+    echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
+    echoServAddr.sin_addr.s_addr = inet_addr(INADDR_ANY);  /* Server IP address */
+    echoServAddr.sin_port = htons(echoServPort);     /* Server port */
+	
+	if(LoggingOn == 1)
+	printf(" Checking echo string %i \n",TCPID.TCPPort);
+    
+    /* Send the string to the server */
+    if (sendto(sock, (char*) &TCPID, loginMsgLen, 0, (struct sockaddr *)
+               &echoServAddr, sizeof(echoServAddr)) != loginMsgLen)
+        DieWithError("sendto() sent a different number of bytes than expected");
+		
+	//printf(" Sending string %d \n",echoStruct.requestType);
+}
+
+
+
 int main(int argc, char *argv[])
 {
     int sock;                        /* Socket */
     struct sockaddr_in echoServAddr; /* Local address */
     struct sockaddr_in echoClntAddr; /* Client address */
     unsigned int cliAddrLen;         /* Length of incoming message */
-    struct ServerMessage serstructecho;    /* Buffer for echo string */
+    struct loginMsg serstructecho;    /* Buffer for echo string */
 	struct ServerMessage books[20]; //array of books that are read from the text file
 	struct ClientMessage echoStruct; //clientmessage struct
 	
 	struct loginMsg	LoginReq;
+	struct loginMsg	Ack;
 	struct loginMsg	loggedInUser[20];
 	
 	int numBooks = 0;				//count for how many books are in books[20]
@@ -31,9 +89,15 @@ int main(int argc, char *argv[])
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
 	int sendMsgSize;				/* Size of sent message */
-    
+	
+    Ack.UserID = -999;
+	Ack.idok = 1;
+	Ack.TCPPort = -999;
+	
 	if(LoggingOn == 1)
 	printf(" starting server version 1\n");
+
+	initClientList(loggedInUser);
 	
     if (argc != 2)         /* Test for correct number of parameters */
     {
@@ -77,91 +141,28 @@ int main(int argc, char *argv[])
                                     (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
             DieWithError("recvfrom() failed");
         
+		
+		//add TCPPort and UserID to the array of Clients
+		
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 		printf("TCPPort#: %d UserID: %d \n",LoginReq.TCPPort, LoginReq.UserID);
 		
+		sendMsgSize = sizeof(Ack);
+        /* Send received datagram back to the client */
+        /* Send received datagram back to the client */
+        if (sendto(sock, (char*) &Ack, sendMsgSize, 0,
+                   (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sendMsgSize)
+            DieWithError("sendto() sent a different number of bytes than expected");
+			
+		
+	int Client = findLastEntry(loggedInUser);
+	if(Client != -1)
+		
+	loggedInUser[Client] = LoginReq;
+
+	printClientList(loggedInUser);
 		
     }
 	
 }	
 	
-
-
-int findbooks(struct ServerMessage *books,char isbn[13],int numBooks)
-{
-	int i;
-	//returns an index of the book if found if it is not found return -1
-	for(i = 0; i<numBooks; i++)
-	{
-		if (memcmp(isbn, books[i].isbn, 13)== 0)
-		{
-			return (i);
-		}
-		
-	}
-	
-return (-1);
-}
-
-// Validate isbn return 1 if valid and 0 if invalid
-int IsValidIsbn13(char *isbn)
-    {
-        int result = 0;
-        
-
-		// Comment Source: Wikipedia
-		// The calculation of an ISBN-13 check digit begins with the first
-		// 12 digits of the thirteen-digit ISBN (thus excluding the check digit itself).
-		// Each digit, from left to right, is alternately multiplied by 1 or 3,
-		// then those products are summed modulo 10 to give a value ranging from 0 to 9.
-		// Subtracted from 10, that leaves a result from 1 to 10. A zero (0) replaces a
-		// ten (10), so, in all cases, a single check digit results.
-		int sum = 0;
-		int i = 0;
-		for (i = 0; i < 12; i++)
-		{
-			sum += (isbn[i]-'0') * (i % 2 == 1 ? 3 : 1);
-		}
-
-		int remainder = sum % 10;
-		int checkDigit = 10 - remainder;
-		if (checkDigit == 10) checkDigit = 0;
-
-		result = checkDigit == (isbn[12]-'0');
-
-		if(LoggingOn == 1)//debug logging
-		printf("isbn checkdigit : %d\n",checkDigit);
-	
-        return result;
-    }
-
-int loadbooks(struct ServerMessage *books)
-{
-	
-	FILE * fp;
-	char isbn[13];                                          /* book ISBN-13*/
-	char authors[100];										/* book author(s) */
-	char title[100];										/* book title */
-	unsigned int edition;									/* book edition */
-	unsigned int year;										/* book publication year */
-	char publisher[100]; 									/* book author(s) */
-	unsigned int inventory;									/* inventory count */
-	unsigned int available;									/* number of available books */
-	int numBooks = 0;
-	
-   
-   fp = fopen ("books.txt", "r");
-   
-   if(LoggingOn == 1)//debug logging
-   printf("eof status: %d \n",feof(fp));
-   
-   while(feof(fp) ==0){//Scans in the book entries one line at a time and returns the entries into the "books" struct array
-   fscanf(fp, "%13c %s %s %d %d %s %d %d \n", books[numBooks].isbn, books[numBooks].authors, books[numBooks].title, &books[numBooks].edition,&books[numBooks].year,books[numBooks].publisher,&books[numBooks].inventory,&books[numBooks].available);
-   
-   if(LoggingOn == 1)//debug logging
-   printf("%s %s %s %d %d %s %d %d\n", books[numBooks].isbn, books[numBooks].authors, books[numBooks].title, books[numBooks].edition,books[numBooks].year,books[numBooks].publisher,books[numBooks].inventory,books[numBooks].available);
-
-   numBooks++;//to keep count of how many books there are
-   }
-   return (numBooks);
-}
