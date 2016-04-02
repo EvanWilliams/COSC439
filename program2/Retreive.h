@@ -30,6 +30,8 @@ char isbn[13];                                       /* book’s validated ISBN-
 
 struct loginMsg{
 	unsigned int UserID;                                	 /* unique client identifier */
-	enum {Valid, inValid} idok;  						/* same size as an unsigned int */                             
+	enum {Valid, inValid} idok;  						/* same size as an unsigned int */    
+	enum {Login, Who, TalkReq, Logout, Negative} ReqType;	
 	unsigned int TCPPort;									/* book edition */
+	
 };

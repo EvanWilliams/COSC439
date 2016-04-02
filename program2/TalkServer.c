@@ -13,6 +13,22 @@ void DieWithError(char *errorMessage);  /* External error handling function */
 int loadbooks(struct ServerMessage *name);
 int findbooks(struct ServerMessage *name, char isbn[13],int numBooks);
 
+struct loginMsg	loggedInUser[20];
+
+
+ int sock;                        /* Socket */
+ 
+ struct loginMsg	LoginReq;
+ 
+ struct sockaddr_in echoServAddr; /* Local address */
+ 
+ struct sockaddr_in echoClntAddr; /* Client address */
+ 
+ int recvMsgSize;
+ 
+ unsigned int cliAddrLen; 
+ 
+
 void initClientList(struct loginMsg loggedInUser[])
 {
 	int i;
@@ -32,6 +48,30 @@ int findLastEntry(struct loginMsg loggedInUser[])
 	}
 	return(-1);
 }
+
+void addClient(struct loginMsg LoginReq){
+	
+	extern struct loginMsg loggedInUser[20];
+	
+	int Client = findLastEntry(loggedInUser);
+	if(Client != -1)
+	loggedInUser[Client] = LoginReq;
+	
+}
+
+int findUserID(struct loginMsg loggedInUser[],unsigned int findUserID){
+	extern struct loginMsg	NoneSuchFound;
+	//prints out the client list if the UserID = Zero then break
+	printf("Printing Client List");	
+	int i;
+	for (i = 0; i < 19; i++){
+		
+	if( loggedInUser[i].UserID == findUserID)
+		return i;
+	
+	}
+	return 0x5555;
+}	
 
 void printClientList(struct loginMsg loggedInUser[])
 {
@@ -68,21 +108,62 @@ int sendLogin(unsigned short echoServPort, int sock, const struct loginMsg TCPID
 	//printf(" Sending string %d \n",echoStruct.requestType);
 }
 
+int sendWho(unsigned short echoServPort, int sock, const struct loginMsg loggedInUser[20])
+{
+	size_t loginMsgLen = sizeof(loggedInUser[20]);
+	    /* Construct the server address structure */
+	struct sockaddr_in echoServAddr; /* Echo server address */
+	
+    memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
+    echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
+    echoServAddr.sin_addr.s_addr = inet_addr(INADDR_ANY);  /* Server IP address */
+    echoServAddr.sin_port = htons(echoServPort);     /* Server port */
 
+    
+    /* Send the string to the server */
+    if (sendto(sock, (char*) &loggedInUser[20], loginMsgLen, 0, (struct sockaddr *)
+               &echoServAddr, sizeof(echoServAddr)) != loginMsgLen)
+        DieWithError("sendto() sent a different number of bytes than expected");
+		
+	//printf(" Sending string %d \n",echoStruct.requestType);
+}
+
+void recMessage(){
+	 extern int sock;                        /* Socket descriptor */
+	 extern struct loginMsg LoginReq;	 /*Recieved struct from server side*/
+	 extern int recvMsgSize;               /* Length of received response */
+	 extern struct sockaddr_in echoClntAddr;     /* Source address of echo */
+	 extern unsigned int cliAddrLen;           /* In-out of address size for recvfrom() */
+	
+	// Set the size of the in-out parameter 
+        cliAddrLen = sizeof(echoClntAddr);
+        
+		if(LoggingOn == 1)
+		printf(" About to receieve LoginMsg \n");
+		
+        //Block until receive message from a client 
+        if ((recvMsgSize = recvfrom(sock, (char*) &LoginReq, ECHOMAX, 0,
+                                    (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
+            DieWithError("recvfrom() failed");
+        
+		
+		
+}	
 
 int main(int argc, char *argv[])
 {
-    int sock;                        /* Socket */
+    extern int sock;                        /* Socket */
     struct sockaddr_in echoServAddr; /* Local address */
-    struct sockaddr_in echoClntAddr; /* Client address */
+    extern struct sockaddr_in echoClntAddr; /* Client address */
     unsigned int cliAddrLen;         /* Length of incoming message */
     struct loginMsg serstructecho;    /* Buffer for echo string */
 	struct ServerMessage books[20]; //array of books that are read from the text file
 	struct ClientMessage echoStruct; //clientmessage struct
 	
-	struct loginMsg	LoginReq;
+	extern struct loginMsg	LoginReq;
 	struct loginMsg	Ack;
-	struct loginMsg	loggedInUser[20];
+	struct loginMsg	NoneSuchFound;
+	extern struct loginMsg	loggedInUser[20];
 	
 	int numBooks = 0;				//count for how many books are in books[20]
 	char echoBuffer[ECHOMAX];        /* Buffer for echo string */
@@ -90,9 +171,15 @@ int main(int argc, char *argv[])
     int recvMsgSize;                 /* Size of received message */
 	int sendMsgSize;				/* Size of sent message */
 	
-    Ack.UserID = -999;
+	NoneSuchFound.UserID = 0xabcd;
+	NoneSuchFound.idok = inValid;
+	NoneSuchFound.TCPPort = 0x5555;
+	NoneSuchFound.ReqType = Negative;
+	
+    Ack.UserID = 0xabcd;
 	Ack.idok = 1;
-	Ack.TCPPort = -999;
+	Ack.TCPPort = 0x5555;
+	Ack.ReqType = 1;
 	
 	if(LoggingOn == 1)
 	printf(" starting server version 1\n");
@@ -131,15 +218,15 @@ int main(int argc, char *argv[])
 	for (;;)  //Run forever 
     {
         // Set the size of the in-out parameter 
-        cliAddrLen = sizeof(echoClntAddr);
         
 		if(LoggingOn == 1)
 		printf(" About to receieve LoginMsg \n");
 		
-        //Block until receive message from a client 
-        if ((recvMsgSize = recvfrom(sock, (char*) &LoginReq, ECHOMAX, 0,
-                                    (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
-            DieWithError("recvfrom() failed");
+		recMessage();
+       // Block until receive message from a client 
+        // if ((recvMsgSize = recvfrom(sock, (char*) &LoginReq, ECHOMAX, 0,
+                                    // (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
+            // DieWithError("recvfrom() failed");
         
 		
 		//add TCPPort and UserID to the array of Clients
@@ -155,14 +242,39 @@ int main(int argc, char *argv[])
             DieWithError("sendto() sent a different number of bytes than expected");
 			
 		
-	int Client = findLastEntry(loggedInUser);
-	if(Client != -1)
-		
-	loggedInUser[Client] = LoginReq;
-
-	printClientList(loggedInUser);
-		
+		addClient(LoginReq);
+		printClientList(loggedInUser);
     }
 	
 }	
 	
+/* 	switch( inputkey ) 
+			{
+				case 'W':
+					//Who call
+					TCPID.UserID = 0;  
+					TCPID.ReqType = Who;
+					sendLogin(servIP,echoServPort,sock,TCPID);
+					recMessage();
+					
+					
+					break;
+				case 'T':
+					//initiate talk session
+					TCPID.UserID = 0;  
+					TCPID.ReqType = TalkReq;
+					
+					break;
+				case 'L':
+					TCPID.UserID = 0;  
+					TCPID.ReqType = Logout;
+					//logout 
+					break;
+					
+				default :
+					//this is invalid input
+					break;
+			}
+			
+	}
+ */

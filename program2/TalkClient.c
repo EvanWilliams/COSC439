@@ -16,39 +16,58 @@ int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct Cl
 
 int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct loginMsg TCPID);
 
-int IsValidIsbn13(char *isbn);
+void recWho(struct loginMsg serstructecho[20]);
 
+void recMessage();
+void initSock();
+
+int sock;                        /* Socket descriptor */
+struct sockaddr_in echoServAddr; /* Echo server address */
+struct sockaddr_in fromAddr;     /* Source address of echo */
+unsigned short echoServPort;     /* Echo server port */
+unsigned int fromSize;           /* In-out of address size for recvfrom() */
+char *servIP;                    /* IP address of server */
+struct ClientMessage echoStruct; /* String to send to echo server */		
+struct loginMsg TCPID;			 /* Struct to send the Login Credentials to the server*/
+struct loginMsg	loggedInUser[20];// This is the array to stor clients from who queries
+struct loginMsg serstructecho;	 /*Recieved struct from server side*/
+char *requestString; 			 /* Enum String for output echoStruct.requesttype*/
+char *respTypeString;
+char *ClientRqtype;				 /* Request type specified by the user Q/B/R */
+char echoBuffer[ECHOMAX+1];      /* Buffer for receiving echoed string */
+int echoStructLen;               /* Length of string to echo */
+int respStringLen;               /* Length of received response */
+int recvMsgSize;
+char inputkey;
+int UserID01 = 3279;
+int UniquereqID = 0;
+int Exitflag = 0;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
+int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/X */
+	
 
 int main(int argc, char *argv[])
 {
-    int sock;                        /* Socket descriptor */
-    struct sockaddr_in echoServAddr; /* Echo server address */
-    struct sockaddr_in fromAddr;     /* Source address of echo */
-    unsigned short echoServPort;     /* Echo server port */
-    unsigned int fromSize;           /* In-out of address size for recvfrom() */
-    char *servIP;                    /* IP address of server */
-    struct ClientMessage echoStruct; /* String to send to echo server */
-	struct loginMsg TCPID;			 /* Struct to send the Login Credentials to the server*/
-	struct loginMsg serstructecho;	 /*Recieved struct from server side*/
-	char *requestString; 			 /* Enum String for output echoStruct.requesttype*/
-	char *respTypeString;
-	char *ClientRqtype;				 /* Request type specified by the user Q/B/R */
-    char echoBuffer[ECHOMAX+1];      /* Buffer for receiving echoed string */
-    int echoStructLen;               /* Length of string to echo */
-    int respStringLen;               /* Length of received response */
-	int recvMsgSize;
-	char inputkey;
-	int UserID;
-	int UniquereqID = 0;
-	int Exitflag = 0;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
-	int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/X */
+	extern int sock;                        /* Socket descriptor */
+    extern struct sockaddr_in echoServAddr; /* Echo server address */
+    extern unsigned short echoServPort;     /* Echo server port */
+	extern struct loginMsg serstructecho;	 /*Recieved struct from server side*/
+    extern char *servIP;                    /* IP address of server */
+	extern struct loginMsg TCPID;			 /* Struct to send the Login Credentials to the server*/
+    extern int respStringLen;               /* Length of received response */
+	extern int recvMsgSize;
+	extern char inputkey;
+	extern int UserID;
+	extern int UniquereqID;
+	extern int Exitflag;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
+	extern int Validflag;				 /*Validation for the operations to make sure it is B/Q/R/X */
 	
-    printf("--------------------4444444--------------------------------------------\n");
+    printf("----------------------------------------------------------------\n");
 
 	
 	TCPID.UserID = 3279;                                	 /* unique client identifier */
-	TCPID.idok = 1;  						/* same size as an unsigned int */                             
+	TCPID.idok = inValid;  						/* same size as an unsigned int */                             
 	TCPID.TCPPort = 2727;
+	TCPID.ReqType = 1;
 	
 	
     if ((argc < 2) || (argc > 3))    /* Test for correct number of arguments */
@@ -60,50 +79,131 @@ int main(int argc, char *argv[])
     servIP = argv[1];           /* First arg: server IP address (dotted quad) */
     echoServPort = atoi(argv[2]);  /* Use given port, if any */
 	
-			/* Create a datagram/UDP socket */
-	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-		DieWithError("socket() failed");
+	initSock();
 		
+	
+	printf("----------------------------------------------------------------\n");
+	printf("\n \n Welcome to the talk session. \n");
+	printf(" First this client will automatically send your TCP Port and UserID to the server \n");
+	printf(" The server will respond with a Success/Failure message \n");
+	printf("----------------------------------------------------------------\n");
+
+
+
+	if(LoggingOn == 1){
+	printf(" about to echo UserID: %d \n",serstructecho.UserID);
+	printf(" about to echo TCPPort: %d \n",serstructecho.TCPPort);
+	}
+	
+	sendLogin(servIP,echoServPort,sock,TCPID);
+	printf(" Test %d \n",echoStruct.requestType);
+	
+	recMessage();
+	//Query Case Returns Book details		
 		
-	for(;;){
-		if(Validflag == 1){
-			printf("----------------------------------------------------------------\n");
-			printf("\n \n Welcome to the talk session. \n");
-			printf(" First this client will automatically send your TCP Port and UserID to the server \n");
-			printf(" The server will respond with a Success/Failure message \n");
-			printf("----------------------------------------------------------------\n");
-		}
-		
-		
-			if(LoggingOn == 1){
-			printf(" about to echo UserID: %d \n",serstructecho.UserID);
-			printf(" about to echo TCPPort: %d \n",serstructecho.TCPPort);
+	printf("Enter a key correspoinding to the following choices: \n");
+	printf("W---- Who query(retreives all connected client devices)\n");
+	printf("T---- Talk Request query(connects to a TCPPort of a connected client device) and \n");
+	printf("L---- Logout User (logs the user out) \n");
+	isalpha(inputkey = (char) toupper(getchar()));
+	
+		Validflag = 1;
+	while(1){	
+	TCPID.UserID = 0;                                
+	TCPID.idok = 0;  					                            
+	TCPID.TCPPort = 0;
+	TCPID.ReqType = 0;
+	
+		switch( inputkey ) 
+			{
+				case 'W':
+					//Who call
+					TCPID.UserID = UserID01;  
+					TCPID.ReqType = Who;
+					sendLogin(servIP,echoServPort,sock,TCPID);
+					recWho(loggedInUser);
+					
+					
+					break;
+				case 'T':
+					//initiate talk session
+					TCPID.UserID = 0;  
+					TCPID.ReqType = TalkReq;
+					//Address Lookup
+					sendLogin(servIP,echoServPort,sock,TCPID);
+					//recieve the login with the corresponding User's TCPPort
+					recMessage();
+					
+					break;
+				case 'L':
+					TCPID.UserID = 0;  
+					TCPID.ReqType = Logout;
+					sendLogin(servIP,echoServPort,sock,TCPID);
+					recMessage();
+					//logout 
+					break;
+					
+				default :
+					//this is invalid input
+					break;
 			}
-			
-			sendLogin(servIP,echoServPort,sock,TCPID);
-			printf(" Test %d \n",echoStruct.requestType);
-			respStringLen = sizeof(serstructecho);
-		
-		/* Recv a response */
-			fromSize = sizeof(fromAddr);
-				if ((respStringLen = recvfrom(sock, (char*) &serstructecho, respStringLen, 0,
-					 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
-					DieWithError("recvfrom() failed");
-
-			printf(" Test %d \n",echoStruct.requestType+1);
-			printf(" about to echo UserID: %d \n",serstructecho.UserID);
-			printf(" about to echo TCPPort: %d \n",serstructecho.TCPPort);
-
-			
-		//Query Case Returns Book details		
 			
 	}
 	close(sock);
 	exit(0);
 }
 	
+void initSock(){
+	extern int sock;    
+			/* Create a datagram/UDP socket */
+	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+		DieWithError("socket() failed");
+		
+	
+}
+void recWho(struct loginMsg serstructecho[20]){
+	 extern int sock;                        /* Socket descriptor */
+	 extern int respStringLen;               /* Length of received response */
+	 extern struct sockaddr_in fromAddr;     /* Source address of echo */
+	 extern unsigned int fromSize;           /* In-out of address size for recvfrom() */
+	
+			respStringLen = sizeof(serstructecho[20]);
+	
+	 //Recv a response 
+		fromSize = sizeof(fromAddr);
+			if ((respStringLen = recvfrom(sock, (char*) &serstructecho[20], respStringLen, 0,
+				 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
+				DieWithError("recvfrom() failed");
 
- 
+		printf(" Test %d \n",echoStruct.requestType+1);
+	if(serstructecho[20].idok == 1)
+		printf(" \n Server responds-- Address and TCP Port number is valid");
+	
+}	
+	
+ void recMessage(){
+	 extern int sock;                        /* Socket descriptor */
+	 extern struct loginMsg serstructecho;	 /*Recieved struct from server side*/
+	 extern int respStringLen;               /* Length of received response */
+	 extern struct sockaddr_in fromAddr;     /* Source address of echo */
+	 extern unsigned int fromSize;           /* In-out of address size for recvfrom() */
+	
+			respStringLen = sizeof(serstructecho);
+	
+	 //Recv a response 
+		fromSize = sizeof(fromAddr);
+			if ((respStringLen = recvfrom(sock, (char*) &serstructecho, respStringLen, 0,
+				 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
+				DieWithError("recvfrom() failed");
+
+		printf(" Test %d \n",echoStruct.requestType+1);
+		printf(" about to echo UserID: %d \n",serstructecho.UserID);
+		printf(" about to echo TCPPort: %d \n",serstructecho.TCPPort);
+	if(serstructecho.idok == 1)
+		printf(" \n Server responds-- Address and TCP Port number is valid");
+	
+}	
+  
 int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct loginMsg TCPID)
 {
 	size_t loginMsgLen = sizeof(TCPID);
