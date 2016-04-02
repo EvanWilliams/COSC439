@@ -100,9 +100,8 @@ void printClientList(struct loginMsg loggedInUser[])
 	}
 }	
 
-int sendLogin(int sock, struct loginMsg Lmesg)
+int sendClient(int sock, struct loginMsg Lmesg, struct sockaddr_in echoServAddr)
 {
-	extern struct sockaddr_in echoServAddr; /* Echo server address */
 	size_t loginMsgLen = sizeof(Lmesg);
 	    /* Construct the server address structure */
 		
@@ -157,7 +156,7 @@ void recMessage(){
                                     (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
             DieWithError("recvfrom() failed");
         
-		printf(" Length of Mesg Received:%d \n",recvMsgSize);
+		printf(" Length of Mesg Received:%d %s \n",recvMsgSize,inet_ntoa(echoClntAddr.sin_addr));
 		
 }	
 
@@ -190,7 +189,7 @@ int main(int argc, char *argv[])
     Ack.UserID = 0xabcd;
 	Ack.idok = 1;
 	Ack.TCPPort = 0x5555;
-	Ack.ReqType = 1;
+	Ack.ReqType = Login;
 	
 	if(LoggingOn == 1)
 	printf(" starting server version 1\n");
@@ -242,7 +241,11 @@ int main(int argc, char *argv[])
 				case Login:
 					//login call
 					addClient(LoginReq);
-					sendLogin(sock,Ack);
+					
+					Ack.ReqType = Login;
+					
+					
+					sendClient(sock,Ack,echoClntAddr);
 					printf(" About to receive LoginMsg \n");
 					break;
 					
@@ -253,7 +256,7 @@ int main(int argc, char *argv[])
 					
 				case TalkReq:
 					//initiate talk session
-					sendLogin(sock,loggedInUser[findUserID(loggedInUser,LoginReq.UserID)]);
+					sendClient(sock,loggedInUser[findUserID(loggedInUser,LoginReq.UserID)],echoServAddr);
 					break;
 					
 				case Logout:
