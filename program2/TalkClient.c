@@ -18,6 +18,10 @@ int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct l
 
 void recWho(struct loginMsg serstructecho[20]);
 
+void printClientList(struct loginMsg loggedInUser[]);
+
+void parentloop();
+
 void recMessage();
 void initSock();
 
@@ -62,12 +66,10 @@ int main(int argc, char *argv[])
 	extern int Validflag;				 /*Validation for the operations to make sure it is B/Q/R/X */
 	
     printf("----------------------------------------------------------------\n");
-
-	
 	TCPID.UserID = 3279;                                	 /* unique client identifier */
 	TCPID.idok = inValid;  						/* same size as an unsigned int */                             
 	TCPID.TCPPort = 2727;
-	TCPID.ReqType = 1;
+	TCPID.ReqType = Login;
 	
 	
     if ((argc < 2) || (argc > 3))    /* Test for correct number of arguments */
@@ -105,14 +107,23 @@ int main(int argc, char *argv[])
 	printf("W---- Who query(retreives all connected client devices)\n");
 	printf("T---- Talk Request query(connects to a TCPPort of a connected client device) and \n");
 	printf("L---- Logout User (logs the user out) \n");
-	isalpha(inputkey = (char) toupper(getchar()));
+	
+	parentloop();
 	
 		Validflag = 1;
+	close(sock);
+	exit(0);
+}
+	
+void parentloop(){
 	while(1){	
 	TCPID.UserID = 0;                                
 	TCPID.idok = 0;  					                            
 	TCPID.TCPPort = 0;
 	TCPID.ReqType = 0;
+	
+	printf("\nEnter command: W for Who, T to initiate Talk session, X to logout");
+	inputkey = (char) toupper(getchar());
 	
 		switch( inputkey ) 
 			{
@@ -122,20 +133,22 @@ int main(int argc, char *argv[])
 					TCPID.ReqType = Who;
 					sendLogin(servIP,echoServPort,sock,TCPID);
 					recWho(loggedInUser);
-					
-					
+					printClientList(loggedInUser);
 					break;
+					
 				case 'T':
 					//initiate talk session
-					TCPID.UserID = 0;  
+					printf("Enter a UserID to Start a talk Session with \n");
+					TCPID.UserID = inputkey;
 					TCPID.ReqType = TalkReq;
 					//Address Lookup
 					sendLogin(servIP,echoServPort,sock,TCPID);
 					//recieve the login with the corresponding User's TCPPort
 					recMessage();
-					
+					//client TCP connection
 					break;
-				case 'L':
+					
+				case 'X':
 					TCPID.UserID = 0;  
 					TCPID.ReqType = Logout;
 					sendLogin(servIP,echoServPort,sock,TCPID);
@@ -149,9 +162,22 @@ int main(int argc, char *argv[])
 			}
 			
 	}
-	close(sock);
-	exit(0);
 }
+	
+void printClientList(struct loginMsg loggedInUser[])
+{
+	//prints out the client list if the UserID = Zero then break
+	printf("Printing Client List");	
+	int i;
+	for (i = 0; i < 19; i++){
+		
+	if( loggedInUser[i].UserID == 0)
+		break;
+	printf("Client #:%d Has a UserId:%d and a TCPPort:%d as well as a idok:%d \n ",i,loggedInUser[i].UserID, loggedInUser[i].TCPPort, loggedInUser[i].idok);
+	
+	}
+}	
+	
 	
 void initSock(){
 	extern int sock;    
@@ -182,7 +208,7 @@ void recWho(struct loginMsg serstructecho[20]){
 }	
 	
  void recMessage(){
-	 extern int sock;                        /* Socket descriptor */
+	 extern int sock;                        /* Socket descriptor *///
 	 extern struct loginMsg serstructecho;	 /*Recieved struct from server side*/
 	 extern int respStringLen;               /* Length of received response */
 	 extern struct sockaddr_in fromAddr;     /* Source address of echo */
