@@ -1,0 +1,13 @@
+all:	talkserver.exe
+
+talkserver.exe:	talkserver.o DieWithError.o
+	gcc -o talkserver.exe talkserver.o DieWithError.o
+		
+talkserver.o:	TalkServer.c 
+	gcc -g -o talkserver.o -c TalkServer.c 
+	
+DieWithError.o:	DieWithError.c 
+	gcc -c DieWithError.c 
+	
+clean:	
+	rm *.o

@@ -169,7 +169,7 @@ void printClientList(struct loginMsg loggedInUser[])
 	//prints out the client list if the UserID = Zero then break
 	printf("Printing Client List");	
 	int i;
-	for (i = 0; i < 19; i++){
+	for (i = 0; i < 20; i++){
 		
 	if( loggedInUser[i].UserID == 0)
 		break;
@@ -187,23 +187,21 @@ void initSock(){
 		
 	
 }
-void recWho(struct loginMsg serstructecho[20]){
-	 extern int sock;                        /* Socket descriptor */
-	 extern int respStringLen;               /* Length of received response */
-	 extern struct sockaddr_in fromAddr;     /* Source address of echo */
-	 extern unsigned int fromSize;           /* In-out of address size for recvfrom() */
+void recWho(struct loginMsg *serstructecho){
+	extern int sock;                        /* Socket descriptor */
+	extern int respStringLen;               /* Length of received response */
+	extern struct sockaddr_in fromAddr;     /* Source address of echo */
+	extern unsigned int fromSize;           /* In-out of address size for recvfrom() */
 	
-			respStringLen = sizeof(serstructecho[20]);
+	respStringLen = sizeof(struct loginMsg)*20;
 	
 	 //Recv a response 
-		fromSize = sizeof(fromAddr);
-			if ((respStringLen = recvfrom(sock, (char*) &serstructecho[20], respStringLen, 0,
-				 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
-				DieWithError("recvfrom() failed");
+	fromSize = sizeof(fromAddr);
+	if ((respStringLen = recvfrom(sock, (char*) &serstructecho, respStringLen, 0,
+		 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
+		DieWithError("recvfrom() failed");
 
 		printf(" Test %d \n",echoStruct.requestType+1);
-	if(serstructecho[20].idok == 1)
-		printf(" \n Server responds-- Address and TCP Port number is valid");
 	
 }	
 	

@@ -32,7 +32,7 @@ struct loginMsg	loggedInUser[20];
 void initClientList(struct loginMsg loggedInUser[])
 {
 	int i;
-	for (i = 0; i < 19; i++){
+	for (i = 0; i < 20; i++){
 		loggedInUser[i].UserID = 0;
 	}
 }	
@@ -40,7 +40,7 @@ void initClientList(struct loginMsg loggedInUser[])
 int findLastEntry(struct loginMsg loggedInUser[])
 {
 	int i;
-	for (i = 0; i < 19; i++){
+	for (i = 0; i < 20; i++){
 		if( loggedInUser[i].UserID == 0){
 			return(i);
 		}
@@ -118,20 +118,12 @@ int sendClient(int sock, struct loginMsg Lmesg, struct sockaddr_in echoServAddr)
 	//printf(" Sending string %d \n",echoStruct.requestType);
 }
 
-int sendWho(unsigned short echoServPort, int sock, const struct loginMsg loggedInUser[20])
+int sendWho(int sock, struct loginMsg *loggedInUser, struct sockaddr_in echoServAddr)
 {
-	size_t loginMsgLen = sizeof(loggedInUser[20]);
-	    /* Construct the server address structure */
-	struct sockaddr_in echoServAddr; /* Echo server address */
-	
-    memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
-    echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
-    echoServAddr.sin_addr.s_addr = inet_addr(INADDR_ANY);  /* Server IP address */
-    echoServAddr.sin_port = htons(echoServPort);     /* Server port */
-
+	size_t loginMsgLen = sizeof(struct loginMsg)*20;
     
     /* Send the string to the server */
-    if (sendto(sock, (char*) &loggedInUser[20], loginMsgLen, 0, (struct sockaddr *)
+    if (sendto(sock, (char*) &loggedInUser, loginMsgLen, 0, (struct sockaddr *)
                &echoServAddr, sizeof(echoServAddr)) != loginMsgLen)
         DieWithError("sendto() sent a different number of bytes than expected");
 		
@@ -244,14 +236,13 @@ int main(int argc, char *argv[])
 					
 					Ack.ReqType = Login;
 					
-					
 					sendClient(sock,Ack,echoClntAddr);
 					printf(" About to receive LoginMsg \n");
 					break;
 					
 				case Who:
 					//Who call
-					sendWho(echoServPort,sock,loggedInUser);
+					sendWho(sock,loggedInUser,echoClntAddr);
 					break;
 					
 				case TalkReq:
