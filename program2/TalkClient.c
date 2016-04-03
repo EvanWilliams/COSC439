@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
 
 
 	if(LoggingOn == 1){
-	printf(" about to echo UserID: %d \n",serstructecho.UserID);
-	printf(" about to echo TCPPort: %d \n",serstructecho.TCPPort);
+	printf(" about to echo UserID: %d \n",TCPID.UserID);
+	printf(" about to echo TCPPort: %d \n",TCPID.TCPPort);
 	}
 	
 	sendLogin(servIP,echoServPort,sock,TCPID);
@@ -207,7 +207,7 @@ void recWho(){
 	
 	 //Recv a response 
 	fromSize = sizeof(fromAddr);
-	if ((respStringLen = recvfrom(sock, (char*) &loggedInUser, respStringLen, 0,
+	if ((recvfrom(sock, (char*) &loggedInUser, respStringLen, 0,
 		 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
 		DieWithError("recvfrom() failed");
 

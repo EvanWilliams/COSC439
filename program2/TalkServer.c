@@ -70,7 +70,7 @@ void addClient(struct loginMsg LoginReq){
 int findUserID(struct loginMsg loggedInUser[],unsigned int findUserID){
 	extern struct loginMsg	NoneSuchFound;
 	//prints out the client list if the UserID = Zero then break
-	printf("Looking for User\n");	
+	printf("Looking for User");	
 	int i;
 	for (i = 0; i < 20; i++){
 		
@@ -120,7 +120,7 @@ int sendWho(int sock, struct loginMsg *loggedInUser, struct sockaddr_in echoServ
 	size_t loginMsgLen = sizeof(struct loginMsg)*20;
     
     /* Send the string to the server */
-    if (sendto(sock, (char*) &loggedInUser, loginMsgLen, 0, (struct sockaddr *)
+    if (sendto(sock, (char*) loggedInUser, loginMsgLen, 0, (struct sockaddr *)
                &echoServAddr, sizeof(echoServAddr)) != loginMsgLen)
         DieWithError("sendto() sent a different number of bytes than expected");
 		
@@ -176,9 +176,9 @@ int main(int argc, char *argv[])
 	NoneSuchFound.TCPPort = 0x777;
 	NoneSuchFound.ReqType = Negative;
 	
-	LoginReq.UserID = 0x3279;
+	LoginReq.UserID = 123;
 	LoginReq.idok = 1;
-	LoginReq.TCPPort = 0x5555;
+	LoginReq.TCPPort = 1555;
 	LoginReq.ReqType = Login;
 	
     Ack.UserID = 0xabcd;
