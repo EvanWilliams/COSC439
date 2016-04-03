@@ -16,7 +16,7 @@ int sendBook(char *servIP,unsigned short echoServPort, int sock, const struct Cl
 
 int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct loginMsg TCPID);
 
-void recWho(struct loginMsg serstructecho[20]);
+void recWho();
 
 void printClientList(struct loginMsg loggedInUser[]);
 
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	
     printf("----------------------------------------------------------------\n");
 	TCPID.UserID = 3279;                                	 /* unique client identifier */
-	TCPID.idok = inValid;  						/* same size as an unsigned int */                             
+	TCPID.idok = Valid;  						/* same size as an unsigned int */                             
 	TCPID.TCPPort = 2727;
 	TCPID.ReqType = Login;
 	
@@ -98,12 +98,11 @@ int main(int argc, char *argv[])
 	}
 	
 	sendLogin(servIP,echoServPort,sock,TCPID);
-	printf(" Test %d \n",echoStruct.requestType);
 	
 	recMessage();
 	//Query Case Returns Book details		
 		
-	printf("Enter a key correspoinding to the following choices: \n");
+	printf("\nEnter a key correspoinding to the following choices: \n");
 	printf("W---- Who query(retreives all connected client devices)\n");
 	printf("T---- Talk Request query(connects to a TCPPort of a connected client device) and \n");
 	printf("L---- Logout User (logs the user out) \n");
@@ -116,13 +115,17 @@ int main(int argc, char *argv[])
 }
 	
 void parentloop(){
+	int bPrompt = 1;
+	int myInt;
 	while(1){	
 	TCPID.UserID = 0;                                
 	TCPID.idok = 0;  					                            
 	TCPID.TCPPort = 0;
 	TCPID.ReqType = 0;
 	
+	if(bPrompt==1){
 	printf("\nEnter command: W for Who, T to initiate Talk session, X to logout");
+	}
 	inputkey = (char) toupper(getchar());
 	
 		switch( inputkey ) 
@@ -134,29 +137,35 @@ void parentloop(){
 					sendLogin(servIP,echoServPort,sock,TCPID);
 					recWho(loggedInUser);
 					printClientList(loggedInUser);
+					bPrompt = 1;
 					break;
 					
 				case 'T':
 					//initiate talk session
-					printf("Enter a UserID to Start a talk Session with \n");
-					TCPID.UserID = inputkey;
+					printf("\nEnter a UserID to Start a talk Session with \n"); 
+					scanf("%d", &myInt);
+					TCPID.UserID = myInt;
 					TCPID.ReqType = TalkReq;
 					//Address Lookup
 					sendLogin(servIP,echoServPort,sock,TCPID);
 					//recieve the login with the corresponding User's TCPPort
 					recMessage();
+					//accept/deny
 					//client TCP connection
+					bPrompt = 1;
 					break;
 					
 				case 'X':
-					TCPID.UserID = 0;  
+					TCPID.UserID = UserID01;  
 					TCPID.ReqType = Logout;
 					sendLogin(servIP,echoServPort,sock,TCPID);
-					recMessage();
+					printf("Logging Out...");
+					exit(0);
 					//logout 
 					break;
 					
 				default :
+					bPrompt = 0;
 					//this is invalid input
 					break;
 			}
@@ -187,9 +196,10 @@ void initSock(){
 		
 	
 }
-void recWho(struct loginMsg *serstructecho){
+void recWho(){
 	extern int sock;                        /* Socket descriptor */
 	extern int respStringLen;               /* Length of received response */
+	extern struct loginMsg	loggedInUser[20];
 	extern struct sockaddr_in fromAddr;     /* Source address of echo */
 	extern unsigned int fromSize;           /* In-out of address size for recvfrom() */
 	
@@ -197,7 +207,7 @@ void recWho(struct loginMsg *serstructecho){
 	
 	 //Recv a response 
 	fromSize = sizeof(fromAddr);
-	if ((respStringLen = recvfrom(sock, (char*) &serstructecho, respStringLen, 0,
+	if ((respStringLen = recvfrom(sock, (char*) &loggedInUser, respStringLen, 0,
 		 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
 		DieWithError("recvfrom() failed");
 
@@ -219,14 +229,16 @@ void recWho(struct loginMsg *serstructecho){
 			if ((respStringLen = recvfrom(sock, (char*) &serstructecho, respStringLen, 0,
 				 (struct sockaddr *) &fromAddr, &fromSize)) != respStringLen)
 				DieWithError("recvfrom() failed");
-
-		printf(" Test %d \n",echoStruct.requestType+1);
-		printf(" about to echo UserID: %d \n",serstructecho.UserID);
-		printf(" about to echo TCPPort: %d \n",serstructecho.TCPPort);
-	if(serstructecho.idok == 1)
+			if(serstructecho.UserID == 0x777){
+				
+				printf("\nNo User With That ID was found");
+			}else{
+				printf("\nUserID: %d Has a TCP Port # of %d",serstructecho.UserID,serstructecho.TCPPort);
+			}
+	if(serstructecho.idok == Valid)
 		printf(" \n Server responds-- Address and TCP Port number is valid");
+}
 	
-}	
   
 int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct loginMsg TCPID)
 {
@@ -251,20 +263,6 @@ int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct l
 }
 
 
- /* Construct the server address structure 
-    memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure 
-    echoServAddr.sin_family = AF_INET;                 /* Internet addr family 
-    echoServAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address 
-    echoServAddr.sin_port   = htons(echoServPort);     /* Server port 
-	
-	printf(" Checking echo string %d \n",echoString.requestID);
-    
-    Send the string to the server 
-    if (sendto(sock, (char*) &echoString, echoStringLen, 0, (struct sockaddr *)
-               &echoServAddr, sizeof(echoServAddr)) != echoStringLen)
-        DieWithError("sendto() sent a different number of bytes than expected");
-		
-	printf(" Sending string %d \n",echoString.requestType);*/
 	
 	
 

@@ -17,15 +17,10 @@ struct loginMsg	loggedInUser[20];
 
 
  int sock;                        /* Socket */
- 
  struct loginMsg LoginReq;
- 
  struct sockaddr_in echoServAddr; /* Local address */
- 
  struct sockaddr_in echoClntAddr; /* Client address */
- 
  int recvMsgSize;
- 
  unsigned int cliAddrLen; 
  
 
@@ -56,7 +51,9 @@ void removeClient(unsigned int remvUserID){
 	extern struct loginMsg loggedInUser[20];
 	
 	int remvClient = findUserID(loggedInUser,remvUserID);
-	loggedInUser[remvClient].UserID = 0;
+	if(remvClient !=0x777 ){
+		loggedInUser[remvClient].UserID = 0;
+	}
 }
 
 
@@ -73,15 +70,15 @@ void addClient(struct loginMsg LoginReq){
 int findUserID(struct loginMsg loggedInUser[],unsigned int findUserID){
 	extern struct loginMsg	NoneSuchFound;
 	//prints out the client list if the UserID = Zero then break
-	printf("Printing Client List");	
+	printf("Looking for User\n");	
 	int i;
-	for (i = 0; i < 19; i++){
+	for (i = 0; i < 20; i++){
 		
 	if( loggedInUser[i].UserID == findUserID)
 		return i;
 	
 	}
-	return 0x5555;
+	return 0x777;
 }	
 
 
@@ -172,11 +169,17 @@ int main(int argc, char *argv[])
     unsigned short echoServPort;     /* Server port */
     int recvMsgSize;                 /* Size of received message */
 	int sendMsgSize;				/* Size of sent message */
-	
-	NoneSuchFound.UserID = 0xabcd;
+	int UserLoc;//this is the index that is used by findUserID to send the appropriate Client info 
+
+	NoneSuchFound.UserID = 0x777;
 	NoneSuchFound.idok = inValid;
-	NoneSuchFound.TCPPort = 0x5555;
+	NoneSuchFound.TCPPort = 0x777;
 	NoneSuchFound.ReqType = Negative;
+	
+	LoginReq.UserID = 0x3279;
+	LoginReq.idok = 1;
+	LoginReq.TCPPort = 0x5555;
+	LoginReq.ReqType = Login;
 	
     Ack.UserID = 0xabcd;
 	Ack.idok = 1;
@@ -247,11 +250,18 @@ int main(int argc, char *argv[])
 					
 				case TalkReq:
 					//initiate talk session
-					sendClient(sock,loggedInUser[findUserID(loggedInUser,LoginReq.UserID)],echoServAddr);
+					UserLoc = findUserID(loggedInUser,LoginReq.UserID);
+					if(UserLoc == 0x777){
+						printf("None Such Found");
+						sendClient(sock,NoneSuchFound,echoClntAddr);
+					}else{
+					sendClient(sock,loggedInUser[UserLoc],echoClntAddr);
+					}
 					break;
 					
 				case Logout:
 					removeClient(LoginReq.UserID);
+					printf("\nClient with UserId: %d was removed from the list of logged in users\n", LoginReq.UserID);
 					//logout 
 					break;
 					
