@@ -279,33 +279,3 @@ int main(int argc, char *argv[])
 		printf("TCPPort#: %d UserID: %d \n",LoginReq.TCPPort, LoginReq.UserID);
     }
 	
-/* 	switch( inputkey ) 
-			{
-				case 'W':
-					//Who call
-					TCPID.UserID = 0;  
-					TCPID.ReqType = Who;
-					sendLogin(servIP,echoServPort,sock,TCPID);
-					recMessage();
-					
-					
-					break;
-				case 'T':
-					//initiate talk session
-					TCPID.UserID = 0;  
-					TCPID.ReqType = TalkReq;
-					
-					break;
-				case 'L':
-					TCPID.UserID = 0;  
-					TCPID.ReqType = Logout;
-					//logout 
-					break;
-					
-				default :
-					//this is invalid input
-					break;
-			}
-			
-	}
- */

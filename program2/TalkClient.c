@@ -19,9 +19,10 @@ int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct l
 void recWho();
 
 void printClientList(struct loginMsg loggedInUser[]);
-
+int talkloop();
 void parentloop();
-
+int childloop(int x);
+int childAccept();
 void recMessage();
 void initSock();
 
@@ -42,8 +43,9 @@ char echoBuffer[ECHOMAX+1];      /* Buffer for receiving echoed string */
 int echoStructLen;               /* Length of string to echo */
 int respStringLen;               /* Length of received response */
 int recvMsgSize;
+int childState;					//talkrequest state for child loop
 char inputkey;
-int UserID01 = 3279;
+int UserID01;
 int UniquereqID = 0;
 int Exitflag = 0;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
 int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/X */
@@ -51,6 +53,7 @@ int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/
 
 int main(int argc, char *argv[])
 {
+	int processID;
 	extern int sock;                        /* Socket descriptor */
     extern struct sockaddr_in echoServAddr; /* Echo server address */
     extern unsigned short echoServPort;     /* Echo server port */
@@ -66,23 +69,26 @@ int main(int argc, char *argv[])
 	extern int Validflag;				 /*Validation for the operations to make sure it is B/Q/R/X */
 	
     printf("----------------------------------------------------------------\n");
-	TCPID.UserID = 3279;                                	 /* unique client identifier */
-	TCPID.idok = Valid;  						/* same size as an unsigned int */                             
-	TCPID.TCPPort = 2727;
-	TCPID.ReqType = Login;
+
 	
 	
-    if ((argc < 2) || (argc > 3))    /* Test for correct number of arguments */
+    if ((argc < 4) || (argc > 5))    /* Test for correct number of arguments */
     {
-        fprintf(stderr,"Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n", argv[0]);
+        fprintf(stderr,"Usage: %s <Server IP> <Echo Word> [<Echo Port>] <UserID> <TCP Port>\n", argv[0]);
         exit(1);
     }
     
     servIP = argv[1];           /* First arg: server IP address (dotted quad) */
     echoServPort = atoi(argv[2]);  /* Use given port, if any */
 	
+	UserID01 = TCPID.UserID = atoi(argv[3]);               /* unique client identifier */
+	TCPID.idok = Valid;  						/* same size as an unsigned int */                             
+	TCPID.ReqType = Login;
+	TCPID.TCPPort = atoi(argv[4]);	//TCP Port to pass to childStartup
+	
 	initSock();
-		
+	childState = 0;	//set child loop state 
+	
 	
 	printf("----------------------------------------------------------------\n");
 	printf("\n \n Welcome to the talk session. \n");
@@ -107,71 +113,231 @@ int main(int argc, char *argv[])
 	printf("T---- Talk Request query(connects to a TCPPort of a connected client device) and \n");
 	printf("L---- Logout User (logs the user out) \n");
 	
+	if ((processID = fork()) < 0)
+        DieWithError("fork() failed");
+    else if (processID == 0)  /* If this is the child process */
+        {
+			
+            close(sock);   /* Child closes parent socket */
+			while(1){
+            childloop(TCPID.TCPPort);
+			}
+            exit(0);           /* Child process terminates */
+        }
+		
 	parentloop();
 	
 		Validflag = 1;
 	close(sock);
 	exit(0);
 }
+
 	
 void parentloop(){
 	int bPrompt = 1;
 	int myInt;
 	while(1){	
-	TCPID.UserID = 0;                                
-	TCPID.idok = 0;  					                            
-	TCPID.TCPPort = 0;
-	TCPID.ReqType = 0;
-	
-	if(bPrompt==1){
-	printf("\nEnter command: W for Who, T to initiate Talk session, X to logout");
-	}
-	inputkey = (char) toupper(getchar());
-	
-		switch( inputkey ) 
-			{
-				case 'W':
-					//Who call
-					TCPID.UserID = UserID01;  
-					TCPID.ReqType = Who;
-					sendLogin(servIP,echoServPort,sock,TCPID);
-					recWho(loggedInUser);
-					printClientList(loggedInUser);
-					bPrompt = 1;
-					break;
+		TCPID.UserID = 0;                                
+		TCPID.idok = 0;  					                            
+		TCPID.TCPPort = 0;
+		TCPID.ReqType = 0;
+		
+		if(bPrompt==1){
+			printf("\nEnter command: W for Who, T to initiate Talk session, X to logout");
+		}
+		inputkey = (char) toupper(getchar());
+		if(childState!=1)
+			switch( inputkey ) 
+				{
+					case 'W':
+						//Who call
+						TCPID.UserID = UserID01;  
+						TCPID.ReqType = Who;
+						sendLogin(servIP,echoServPort,sock,TCPID);
+						recWho(loggedInUser);
+						printClientList(loggedInUser);
+						bPrompt = 1;
+						break;
+						
+					case 'T':
+						//initiate talk session
+						printf("\nEnter a UserID to Start a talk Session with \n"); 
+						scanf("%d", &myInt);
+						TCPID.UserID = myInt;
+						TCPID.ReqType = TalkReq;
+						//Address Lookup
+						sendLogin(servIP,echoServPort,sock,TCPID);
+						//recieve the login with the corresponding User's TCPPort
+						recMessage();
+						//accept/deny
+						childState = 1;	//set child state to "in a talk session"
+						talkloop();
+						//loop
+						//client TCP connection
+						bPrompt = 1;
+						break;
+						
+					case 'X':
+						TCPID.UserID = UserID01;  
+						TCPID.ReqType = Logout;
+						sendLogin(servIP,echoServPort,sock,TCPID);
+						printf("Logging Out...");
+						exit(0);
+						//logout 
+						break;
 					
-				case 'T':
-					//initiate talk session
-					printf("\nEnter a UserID to Start a talk Session with \n"); 
-					scanf("%d", &myInt);
-					TCPID.UserID = myInt;
-					TCPID.ReqType = TalkReq;
-					//Address Lookup
-					sendLogin(servIP,echoServPort,sock,TCPID);
-					//recieve the login with the corresponding User's TCPPort
-					recMessage();
-					//accept/deny
-					//client TCP connection
-					bPrompt = 1;
-					break;
+						
+					default :
+						bPrompt = 0;
+						//this is invalid input
+						break;
+				}
+			else{
+				
+				switch( inputkey ) 
+				{
 					
-				case 'X':
-					TCPID.UserID = UserID01;  
-					TCPID.ReqType = Logout;
-					sendLogin(servIP,echoServPort,sock,TCPID);
-					printf("Logging Out...");
-					exit(0);
-					//logout 
-					break;
+					case 'A':
+						//accept/deny talk request
+						
+						childState = 1;	//set child state to "in a talk session"
+						talkloop();
+							
+						bPrompt = 1;
+						break;
+						
+					case 'D':
+					//accept/deny talk request
 					
-				default :
-					bPrompt = 0;
-					//this is invalid input
-					break;
+						childState = -1;//set child state to "talk rejected"
+						printf("Talk Request denied");
+					
+						bPrompt = 1;
+						break;
+						
+						
+					default :
+						bPrompt = 0;
+						//this is invalid input
+						break;
+				}
+				
+				
 			}
-			
-	}
+		}
 }
+
+
+
+
+//this is the client child proccess that send the messages to the client Parent
+int childloop(int tcpPort)
+{
+	//clienttestserver
+  int listenfd = 0,connfd = 0;
+  
+  struct sockaddr_in serv_addr;
+ 
+  char sendBuff[1025];  
+  char str1[30];
+  int numrv;  
+ 
+  listenfd = socket(AF_INET, SOCK_STREAM, 0);
+  printf("socket retrieve success\n");
+  
+  memset(&serv_addr, '0', sizeof(serv_addr));
+  memset(sendBuff, '0', sizeof(sendBuff));
+      
+  serv_addr.sin_family = AF_INET;    
+  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
+  serv_addr.sin_port = htons(tcpPort);    
+ 
+  bind(listenfd, (struct sockaddr*)&serv_addr,sizeof(serv_addr));
+  
+  if(listen(listenfd, 10) == -1){
+      printf("Failed to listen\n");
+      return -1;
+  }
+  printf("A talk request has been sent from . Would you like to Accept?");
+  printf("Enter A to Accept and D to reject the request.");
+  
+  childState = 0;
+  
+  while(childState == 0)
+  {
+	sleep(1);
+	  
+  }
+	if(childState == -1)
+		return -1;
+  
+ connfd = accept(listenfd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
+  while(1)
+    {
+      
+	  printf("enter a string less then 30 characters");
+	  printf("enter X to exit the talk session");
+	  scanf("%s",str1);
+	  // if(str1 == 'X')
+		  // break;
+	  
+      strcpy(sendBuff,str1);
+      write(connfd, sendBuff, strlen(sendBuff));
+    
+      sleep(1);
+    }
+	close(connfd); 
+	 
+  
+ 
+  return 0;
+}
+
+int talkloop(void)
+//socettestclient
+{
+  int sockfd = 0,n = 0;
+  char recvBuff[1024];
+  struct sockaddr_in serv_addr;
+ 
+  memset(recvBuff, '0' ,sizeof(recvBuff));
+  if((sockfd = socket(AF_INET, SOCK_STREAM, 0))< 0)
+    {
+      printf("\n Error : Could not create socket \n");
+      return 1;
+    }
+ 
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(27000);
+  serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+ 
+  if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))<0)
+    {
+      printf("\n Error : Connect Failed \n");
+      return 1;
+    }
+	int i;
+ 
+  while((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
+    {
+      recvBuff[n] = 0;
+      if(fputs(recvBuff, stdout) == EOF)
+    {
+      printf("\n Error : Fputs error");
+    }
+      printf("\n");
+    }
+ 
+  if( n < 0)
+    {
+      printf("\n Read Error \n");
+    }
+ 
+
+  return 0;
+}
+
+
 	
 void printClientList(struct loginMsg loggedInUser[])
 {
@@ -182,7 +348,7 @@ void printClientList(struct loginMsg loggedInUser[])
 		
 	if( loggedInUser[i].UserID == 0)
 		break;
-	printf("Client #:%d Has a UserId:%d and a TCPPort:%d as well as a idok:%d \n ",i,loggedInUser[i].UserID, loggedInUser[i].TCPPort, loggedInUser[i].idok);
+	printf("\nClient #:%d Has a UserId:%d and a TCPPort:%d as well as a idok:%d \n ",i,loggedInUser[i].UserID, loggedInUser[i].TCPPort, loggedInUser[i].idok);
 	
 	}
 }	
