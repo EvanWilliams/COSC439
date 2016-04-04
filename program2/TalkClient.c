@@ -5,6 +5,7 @@
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
 #include <errno.h>
+#include <string.h>		//for strcmp
 #include <sys/mman.h>  //for mmap.c
 #include "Retreive.h"
 
@@ -51,10 +52,11 @@ int recvMsgSize;
 int* childState;					//talkrequest state for child loop
 char inputkey;
 int UserID01;
+char UserIn [4];
 int UniquereqID = 0;
 int Exitflag = 0;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
 int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/X */
-	
+
 
 	
 int main(int argc, char *argv[])
@@ -71,6 +73,7 @@ int main(int argc, char *argv[])
 	extern char inputkey;
 	extern int UserID;
 	extern int UniquereqID;
+	extern char UserIn[4];
 	extern int Exitflag;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
 	extern int Validflag;				 /*Validation for the operations to make sure it is B/Q/R/X */
 	
@@ -91,12 +94,12 @@ int main(int argc, char *argv[])
 	IPserv.sin_addr.s_addr = inet_addr(argv[1]);
 	
     echoServPort = atoi(argv[2]);  /* Use given port, if any */
-	
+	UserIn[4] = (char *) argv[4];
+	printf("Userin TcpPort :%s", UserIn);
 	UserID01 = TCPID.UserID = atoi(argv[3]);               /* unique client identifier */
 	TCPID.idok = Valid;  						/* same size as an unsigned int */                             
 	TCPID.ReqType = Login;
 	TCPID.TCPPort = atoi(argv[4]);	//TCP Port to pass to childStartup
-	
 	initSock();
 	*childState = 0;	//set child loop state 
 	
@@ -158,7 +161,7 @@ void parentloop(){
 		if(bPrompt==1){
 			printf("\nEnter command: W for Who, T to initiate Talk session, X to logout");
 		}else if(bPrompt==2){
-			printf("\nEnter command: A for accept Talk Request,D for Decline\n");
+			
 		}
 		inputkey = (char) toupper(getchar());
 		printf("Childstate : %d \n",*childState);
@@ -211,7 +214,6 @@ void parentloop(){
 						break;
 				}
 			else{
-				
 				switch( inputkey ) 
 				{
 					
@@ -255,13 +257,17 @@ int talkloop(unsigned int tcpPort)
 {
 	//clienttestserver
   int listenfd = 0,connfd = 0;
-  
+  extern char UserIn[4]; 
   struct sockaddr_in serv_addr;
 
   char sendBuff[1025];  
   char str1[30];
+  char str2[30];
+  int firstrun = 0;
+  
   char IPPortSend[60];
   int numrv;  
+  char exit[] = "exit";
  
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
   printf("\nsocket retrieve success\n");
@@ -282,9 +288,11 @@ int talkloop(unsigned int tcpPort)
       printf("Failed to listen\n");
       return -1;
   }
-  
-  printf("A talk request has been sent from . Would you like to Accept?");
-  printf("Enter A to Accept and D to reject the request.");
+
+  connfd = accept(listenfd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
+  printf("\nTCPPORTNUM--> %s ", UserIn);
+  strcpy(sendBuff,UserIn);
+  write(connfd, sendBuff, strlen(sendBuff));
   
   *childState = 0;
   
@@ -296,23 +304,27 @@ int talkloop(unsigned int tcpPort)
 	if(*childState == -1)
 		return -1;
   
-	connfd = accept(listenfd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
+	//connfd = accept(listenfd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
  
-	write(connfd, (char *)&TCPID.TCPPort, sizeof(TCPID.TCPPort));
+	
   while(1)
     {
-      
-	  printf("enter a string less then 30 characters");
-	  printf("enter X to exit the talk session");
+		if (firstrun == 0){
+      printf("\nWelcome to the Talk session, At any time type exit to end the talk session");
+	  printf("\nenter a string less then 30 characters");
+	  printf("\nenter X to exit the talk session");
+		}
+		firstrun = 1;
 	  scanf("%s",str1);
-	  // if(str1 == 'X')
-		  // break;
+		if(strcmp(str1,exit) == 0)
+		   break;
 	  
       strcpy(sendBuff,str1);
       write(connfd, sendBuff, strlen(sendBuff));
     
       sleep(1);
     }
+	printf("\nExiting Talk Session");
 	close(connfd); 
 	 
   
@@ -354,7 +366,9 @@ int childloop(struct loginMsg child)
 		else
 			printf("port number %d : Ip address %d \n", ntohs(remotechild->sin_port),remotechild->sin_addr.s_addr);
 	
-	printf("Talk connected\n");
+	printf("\nTalk connected\n");
+	printf("\nA talk request has been received! Would you like to Accept?");
+	printf("\nEnter A to Accept and D to reject the request.");
 	*childState = 1;
   while((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
     {
