@@ -4,6 +4,7 @@
 #include <stdlib.h>     /* for atoi() and exit() */
 #include <string.h>     /* for memset() */
 #include <unistd.h>     /* for close() */
+#include <errno.h>
 #include <sys/mman.h>  //for mmap.c
 #include "Retreive.h"
 
@@ -31,6 +32,8 @@ void initSock();
 int sock;                        /* Socket descriptor */
 struct sockaddr_in echoServAddr; /* Echo server address */
 struct sockaddr_in fromAddr;     /* Source address of echo */
+struct sockaddr_in *remotechild;
+struct sockaddr_in IPserv;		 //used to send the IP address of the server
 unsigned short echoServPort;     /* Echo server port */
 unsigned int fromSize;           /* In-out of address size for recvfrom() */
 char *servIP;                    /* IP address of server */
@@ -72,7 +75,8 @@ int main(int argc, char *argv[])
 	extern int Validflag;				 /*Validation for the operations to make sure it is B/Q/R/X */
 	
 	childState = (int*) mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
-	
+	remotechild = (struct sockaddr_in*) mmap(NULL, sizeof(struct sockaddr_in), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
+
     printf("----------------------------------------------------------------\n");
 
 	
@@ -83,6 +87,8 @@ int main(int argc, char *argv[])
     }
     
     servIP = argv[1];           /* First arg: server IP address (dotted quad) */
+	
+	IPserv.sin_addr.s_addr = inet_addr(argv[1]);
 	
     echoServPort = atoi(argv[2]);  /* Use given port, if any */
 	
@@ -251,9 +257,10 @@ int talkloop(unsigned int tcpPort)
   int listenfd = 0,connfd = 0;
   
   struct sockaddr_in serv_addr;
- 
+
   char sendBuff[1025];  
   char str1[30];
+  char IPPortSend[60];
   int numrv;  
  
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -275,6 +282,7 @@ int talkloop(unsigned int tcpPort)
       printf("Failed to listen\n");
       return -1;
   }
+  
   printf("A talk request has been sent from . Would you like to Accept?");
   printf("Enter A to Accept and D to reject the request.");
   
@@ -288,7 +296,9 @@ int talkloop(unsigned int tcpPort)
 	if(*childState == -1)
 		return -1;
   
- connfd = accept(listenfd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
+	connfd = accept(listenfd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
+ 
+	write(connfd, (char *)&TCPID.TCPPort, sizeof(TCPID.TCPPort));
   while(1)
     {
       
@@ -329,15 +339,21 @@ int childloop(struct loginMsg child)
 	//printf("%d\n",child.TCPPort);
 	serv_addr.sin_port = htons(child.TCPPort);
 	//printf("%s\n",inet_ntoa(child.clientIP));
-	serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	serv_addr.sin_addr.s_addr = IPserv.sin_addr.s_addr;
 	//printf("\nServer address: %s\n TCP Port :%d ",serv_addr.sin_addr.s_addr,serv_addr.sin_port);
 	sleep(1);
   if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))<0)
     {
     //  printf("\n Error : Connect Failed \n");
-	 // printf("Serveraddr: %d,%s",serv_addr.sin_port,serv_addr.sin_addr.s_addr);
+	 // printf("Serveraddr: %d,%s");
       return 1;
     }
+		socklen_t len = sizeof(struct sockaddr_in);
+		if (getsockname(sockfd, (struct sockaddr *)remotechild, &len) == -1)
+			printf("getpeername %d\n",errno);
+		else
+			printf("port number %d : Ip address %d \n", ntohs(remotechild->sin_port),remotechild->sin_addr.s_addr);
+	
 	printf("Talk connected\n");
 	*childState = 1;
   while((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
