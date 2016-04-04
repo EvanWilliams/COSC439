@@ -32,6 +32,7 @@ struct loginMsg{
 	unsigned int UserID;                                	 /* unique client identifier */
 	enum {Valid, inValid} idok;  						/* same size as an unsigned int */    
 	enum {Login, Who, TalkReq, Logout, Negative} ReqType;	
+	struct in_addr clientIP;     /* Source address of echo */
 	unsigned int TCPPort;									/* book edition */
 	
 };

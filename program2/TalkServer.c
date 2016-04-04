@@ -112,7 +112,7 @@ int sendClient(int sock, struct loginMsg Lmesg, struct sockaddr_in echoServAddr)
     if (testnum != loginMsgLen)
         DieWithError("sendto() sent a different number of bytes than expected");
 		
-	//printf(" Sending string %d \n",echoStruct.requestType);
+	printf(" Sending Message: to Client %d \n",Lmesg.ReqType);
 }
 
 int sendWho(int sock, struct loginMsg *loggedInUser, struct sockaddr_in echoServAddr)
@@ -146,6 +146,7 @@ void recMessage(){
             DieWithError("recvfrom() failed");
         
 		printf(" Length of Mesg Received:%d %s \n",recvMsgSize,inet_ntoa(echoClntAddr.sin_addr));
+		LoginReq.clientIP = echoClntAddr.sin_addr;
 		
 }	
 
@@ -255,6 +256,7 @@ int main(int argc, char *argv[])
 						printf("None Such Found");
 						sendClient(sock,NoneSuchFound,echoClntAddr);
 					}else{
+						//address lookup
 					sendClient(sock,loggedInUser[UserLoc],echoClntAddr);
 					}
 					break;
