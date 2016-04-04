@@ -20,7 +20,7 @@ int sendLogin(char *servIP,unsigned short echoServPort, int sock, const struct l
 void recWho();
 
 void printClientList(struct loginMsg loggedInUser[]);
-int talkloop(int);
+int talkloop(unsigned int);
 void parentloop();
 int childloop(struct loginMsg);
 int childAccept();
@@ -75,7 +75,6 @@ int main(int argc, char *argv[])
 	
     printf("----------------------------------------------------------------\n");
 
-	
 	
     if ((argc < 4) || (argc > 5))    /* Test for correct number of arguments */
     {
@@ -184,7 +183,7 @@ void parentloop(){
 						//accept/deny
 						*childState = 1;	//set child state to "in a talk session"
 						printf("About to start Talk loop Child Addr: %d\n",childaddr.TCPPort);
-						talkloop(childaddr.TCPPort);
+						talkloop(serstructecho.TCPPort);
 						//loop
 						//client TCP connection
 						bPrompt = 2;
@@ -214,8 +213,9 @@ void parentloop(){
 						//accept/deny talk request
 						
 						*childState = 1;	//set child state to "in a talk session"
-						printf("\nTalk loop initializing on Parent\n");
-						talkloop(childaddr.TCPPort);
+						printf("\nTalk loop initializing on Parent %d:  \n",serstructecho.TCPPort);
+						serstructecho.TCPPort = 5588;
+						talkloop(serstructecho.TCPPort);
 							
 						bPrompt = 1;
 						break;
@@ -245,7 +245,7 @@ void parentloop(){
 
 
 //this is the client child proccess that send the messages to the client Parent
-int talkloop(int tcpPort)
+int talkloop(unsigned int tcpPort)
 {
 	//clienttestserver
   int listenfd = 0,connfd = 0;
@@ -278,7 +278,7 @@ int talkloop(int tcpPort)
   printf("A talk request has been sent from . Would you like to Accept?");
   printf("Enter A to Accept and D to reject the request.");
   
-  childState = 0;
+  *childState = 0;
   
   while(*childState == 0)
   {
@@ -381,7 +381,6 @@ void initSock(){
 			/* Create a datagram/UDP socket */
 	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
 		DieWithError("socket() failed");
-		
 	
 }
 void recWho(){
