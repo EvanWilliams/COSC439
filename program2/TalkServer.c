@@ -70,7 +70,7 @@ void addClient(struct loginMsg LoginReq){
 int findUserID(struct loginMsg loggedInUser[],unsigned int findUserID){
 	extern struct loginMsg	NoneSuchFound;
 	//prints out the client list if the UserID = Zero then break
-	printf("Looking for User");	
+	printf("\nLooking for User\n");	
 	int i;
 	for (i = 0; i < 20; i++){
 		

@@ -165,7 +165,8 @@ void parentloop(){
 		}
 		inputkey = (char) toupper(getchar());
 		printf("Childstate : %d \n",*childState);
-		if(*childState == 0)
+		if(*childState == 0){
+			remotechild->TCPPort = 0;
 			switch( inputkey ) 
 				{
 					case 'W':
@@ -213,6 +214,7 @@ void parentloop(){
 						//this is invalid input
 						break;
 				}
+		}
 			else if(*childState == 1){
 				
 				switch( inputkey ) 
@@ -268,7 +270,6 @@ int talkloop(unsigned int tcpPort)
   
   char IPPortSend[60];
   int numrv;  
-  char exit[] = "exit";
  
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
   printf("\nsocket retrieve success\n");
@@ -294,7 +295,7 @@ int talkloop(unsigned int tcpPort)
   strcpy(sendBuff,UserIn);
   write(connfd, sendBuff, strlen(sendBuff));
   
-  *childState = 0;
+  //*childState = 0;
   
   while(*childState == 0)
   {
@@ -317,19 +318,20 @@ int talkloop(unsigned int tcpPort)
 		firstrun = 1;
 		printf("%d:",*childState);
 	  scanf("%s",str1);
-		if(strcmp(str1,exit) == 0)
-		   break;
 	  
       strcpy(sendBuff,str1);
       write(connfd, sendBuff, strlen(sendBuff));
-    
+	  
+		if(strcmp(str1,"exit") == 0)
+		   break;
+	
       sleep(1);
     }
 	printf("\nExiting Talk Session");
 	*childState = 0;
 	close(connfd); 
+	exit(0);
 	 
-  
  
   return 0;
 }
@@ -362,15 +364,11 @@ int childloop(struct loginMsg child)
 	 // printf("Serveraddr: %d,%s");
       return 1;
     }
-		// socklen_t len = sizeof(struct sockaddr_in);
-		// if (getsockname(sockfd, (struct sockaddr *)remotechild, &len) == -1)
-			// printf("getpeername %d\n",errno);
-		// else
-			// printf("port number %d : Ip address %d \n", ntohs(remotechild->sin_port),remotechild->sin_addr.s_addr);
-	
+	if(*childState!=2){
 	printf("\nTalk connected\n");
 	printf("\nA talk request has been received! Would you like to Accept?");
 	printf("\nEnter A to Accept and D to reject the request.");
+	}
 	*childState = 2;
 	
 	n = read(sockfd, recvBuff, sizeof(recvBuff)-1);
@@ -389,6 +387,13 @@ int childloop(struct loginMsg child)
       printf("\n Error : Fputs error");
     }
       printf("\n");
+	  if(strcmp(recvBuff,"exit") == 0){
+		  *childState = 0;
+		  
+		  break;
+		  exit(0);
+	  }
+		   
     }
  
   if( n < 0)
