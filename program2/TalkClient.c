@@ -33,7 +33,7 @@ void initSock();
 int sock;                        /* Socket descriptor */
 struct sockaddr_in echoServAddr; /* Echo server address */
 struct sockaddr_in fromAddr;     /* Source address of echo */
-struct sockaddr_in *remotechild;
+struct loginMsg *remotechild;	 // login TCP port from arguments--m.map from child to parent
 struct sockaddr_in IPserv;		 //used to send the IP address of the server
 unsigned short echoServPort;     /* Echo server port */
 unsigned int fromSize;           /* In-out of address size for recvfrom() */
@@ -52,7 +52,7 @@ int recvMsgSize;
 int* childState;					//talkrequest state for child loop
 char inputkey;
 int UserID01;
-char UserIn [4];
+char UserIn [5];
 int UniquereqID = 0;
 int Exitflag = 0;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
 int Validflag = 1;				 /*Validation for the operations to make sure it is B/Q/R/X */
@@ -73,12 +73,12 @@ int main(int argc, char *argv[])
 	extern char inputkey;
 	extern int UserID;
 	extern int UniquereqID;
-	extern char UserIn[4];
+	extern char UserIn[5];
 	extern int Exitflag;				 /*Exit flag is set to 0 but if the user enters an X it will exit the program*/
 	extern int Validflag;				 /*Validation for the operations to make sure it is B/Q/R/X */
 	
 	childState = (int*) mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
-	remotechild = (struct sockaddr_in*) mmap(NULL, sizeof(struct sockaddr_in), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
+	remotechild = (struct loginMsg*) mmap(NULL, sizeof(struct loginMsg), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
 
     printf("----------------------------------------------------------------\n");
 
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 	IPserv.sin_addr.s_addr = inet_addr(argv[1]);
 	
     echoServPort = atoi(argv[2]);  /* Use given port, if any */
-	UserIn[4] = (char *) argv[4];
+	strncpy(UserIn,argv[4],4);
 	printf("Userin TcpPort :%s", UserIn);
 	UserID01 = TCPID.UserID = atoi(argv[3]);               /* unique client identifier */
 	TCPID.idok = Valid;  						/* same size as an unsigned int */                             
@@ -222,8 +222,9 @@ void parentloop(){
 						
 						*childState = 1;	//set child state to "in a talk session"
 						printf("\nTalk loop initializing on Parent %d:  \n",serstructecho.TCPPort);
-						serstructecho.TCPPort = 5588;
-						talkloop(serstructecho.TCPPort);
+						//serstructecho.TCPPort = 5588;
+						printf("-%d-\n",remotechild->TCPPort);
+						talkloop(remotechild->TCPPort);
 							
 						bPrompt = 1;
 						break;
@@ -257,7 +258,7 @@ int talkloop(unsigned int tcpPort)
 {
 	//clienttestserver
   int listenfd = 0,connfd = 0;
-  extern char UserIn[4]; 
+  extern char UserIn[5]; 
   struct sockaddr_in serv_addr;
 
   char sendBuff[1025];  
@@ -290,7 +291,6 @@ int talkloop(unsigned int tcpPort)
   }
 
   connfd = accept(listenfd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
-  printf("\nTCPPORTNUM--> %s ", UserIn);
   strcpy(sendBuff,UserIn);
   write(connfd, sendBuff, strlen(sendBuff));
   
@@ -360,16 +360,23 @@ int childloop(struct loginMsg child)
 	 // printf("Serveraddr: %d,%s");
       return 1;
     }
-		socklen_t len = sizeof(struct sockaddr_in);
-		if (getsockname(sockfd, (struct sockaddr *)remotechild, &len) == -1)
-			printf("getpeername %d\n",errno);
-		else
-			printf("port number %d : Ip address %d \n", ntohs(remotechild->sin_port),remotechild->sin_addr.s_addr);
+		// socklen_t len = sizeof(struct sockaddr_in);
+		// if (getsockname(sockfd, (struct sockaddr *)remotechild, &len) == -1)
+			// printf("getpeername %d\n",errno);
+		// else
+			// printf("port number %d : Ip address %d \n", ntohs(remotechild->sin_port),remotechild->sin_addr.s_addr);
 	
 	printf("\nTalk connected\n");
 	printf("\nA talk request has been received! Would you like to Accept?");
 	printf("\nEnter A to Accept and D to reject the request.");
 	*childState = 1;
+	
+	n = read(sockfd, recvBuff, sizeof(recvBuff)-1);
+	recvBuff[n] = 0;
+	
+	remotechild->TCPPort = atoi(recvBuff);
+	printf("recieve buff-%s\n",recvBuff);
+	
   while((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
     {
       recvBuff[n] = 0;
