@@ -165,7 +165,7 @@ void parentloop(){
 		}
 		inputkey = (char) toupper(getchar());
 		printf("Childstate : %d \n",*childState);
-		if(*childState!=1)
+		if(*childState == 0)
 			switch( inputkey ) 
 				{
 					case 'W':
@@ -213,16 +213,15 @@ void parentloop(){
 						//this is invalid input
 						break;
 				}
-			else{
+			else if(*childState == 1){
+				
 				switch( inputkey ) 
 				{
 					
 					case 'A':
 						//accept/deny talk request
 						
-						*childState = 1;	//set child state to "in a talk session"
 						printf("\nTalk loop initializing on Parent %d:  \n",serstructecho.TCPPort);
-						//serstructecho.TCPPort = 5588;
 						printf("-%d-\n",remotechild->TCPPort);
 						talkloop(remotechild->TCPPort);
 							
@@ -245,7 +244,8 @@ void parentloop(){
 						break;
 				}
 				
-				
+			}if(*childState == 2){
+				talkloop(remotechild->TCPPort);
 			}
 		}
 }
@@ -315,6 +315,7 @@ int talkloop(unsigned int tcpPort)
 	  printf("\nenter X to exit the talk session");
 		}
 		firstrun = 1;
+		printf("%d:",*childState);
 	  scanf("%s",str1);
 		if(strcmp(str1,exit) == 0)
 		   break;
@@ -325,6 +326,7 @@ int talkloop(unsigned int tcpPort)
       sleep(1);
     }
 	printf("\nExiting Talk Session");
+	*childState = 0;
 	close(connfd); 
 	 
   
@@ -369,13 +371,15 @@ int childloop(struct loginMsg child)
 	printf("\nTalk connected\n");
 	printf("\nA talk request has been received! Would you like to Accept?");
 	printf("\nEnter A to Accept and D to reject the request.");
-	*childState = 1;
+	*childState = 2;
 	
 	n = read(sockfd, recvBuff, sizeof(recvBuff)-1);
 	recvBuff[n] = 0;
 	
 	remotechild->TCPPort = atoi(recvBuff);
 	printf("recieve buff-%s\n",recvBuff);
+	
+	
 	
   while((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
     {
