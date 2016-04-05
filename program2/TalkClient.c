@@ -159,7 +159,7 @@ void parentloop(){
 		TCPID.ReqType = 0;
 		
 		if(bPrompt==1){
-			printf("\nEnter command: W for Who, T to initiate Talk session, X to logout");
+			printf("\nEnter command: W for Who, T to initiate Talk session, X to logout\n");
 		}else if(bPrompt==2){
 			
 		}
@@ -416,8 +416,9 @@ void printClientList(struct loginMsg loggedInUser[])
 		
 	if( loggedInUser[i].UserID == 0)
 		break;
-	printf("\nClient #:%d Has a UserId:%d and a TCPPort:%d as well as a idok:%d \n IP Address : %s ",i,loggedInUser[i].UserID, loggedInUser[i].TCPPort, loggedInUser[i].idok,inet_ntoa(loggedInUser[i].clientIP));
-	
+	else{
+	printf("\nClient #:%d Has a UserId:%d and a TCPPort:%d \n IP Address : %s ",i+1,loggedInUser[i].UserID,loggedInUser[i].TCPPort,inet_ntoa(loggedInUser[i].clientIP));
+	}
 	}
 }	
 	
@@ -464,7 +465,7 @@ void recWho(){
 				DieWithError("recvfrom() failed");
 			if(serstructecho.UserID == 0x777){
 				
-				printf("\nNo User With That ID was found");
+				printf("\nNo User With That ID was found\n");
 			}else{
 				printf("\nUserID: %d \nHas a TCP Port # of %d\n",serstructecho.UserID,serstructecho.TCPPort);
 			}

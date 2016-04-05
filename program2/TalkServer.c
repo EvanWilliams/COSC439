@@ -10,8 +10,7 @@
 #define ECHOMAX 255     /* Longest string to echo */
 
 void DieWithError(char *errorMessage);  /* External error handling function */
-int loadbooks(struct ServerMessage *name);
-int findbooks(struct ServerMessage *name, char isbn[13],int numBooks);
+int findUserID(struct loginMsg loggedInUser[],unsigned int findUserID);
 
 struct loginMsg	loggedInUser[20];
 
@@ -49,12 +48,26 @@ int findLastEntry(struct loginMsg loggedInUser[])
 void removeClient(unsigned int remvUserID){
 	
 	extern struct loginMsg loggedInUser[20];
+	int r;
 	
 	int remvClient = findUserID(loggedInUser,remvUserID);
 	if(remvClient !=0x777 ){
-		loggedInUser[remvClient].UserID = 0;
+		for(r = remvClient; r<19; r++){
+		loggedInUser[r].UserID = loggedInUser[r+1].UserID;
+		loggedInUser[r].idok = loggedInUser[r+1].idok;
+		loggedInUser[r].ReqType = loggedInUser[r+1].ReqType;
+		loggedInUser[r].clientIP = loggedInUser[r+1].clientIP;
+		loggedInUser[r].TCPPort = loggedInUser[r+1].TCPPort;
+		}
+		loggedInUser[19].UserID = 0;
 	}
 }
+
+// unsigned int UserID;                                	 /* unique client identifier */
+	// enum {Valid, inValid} idok;  						/* same size as an unsigned int */    
+	// enum {Login, Who, TalkReq, Logout, Negative} ReqType;	
+	// struct in_addr clientIP;     /* Source address of echo */
+	// int TCPPort;									/* book edition */
 
 
 void addClient(struct loginMsg LoginReq){
